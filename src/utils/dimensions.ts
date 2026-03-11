@@ -20,12 +20,7 @@ export const formatCm = (cm: number) => `${cm} ס״מ`
 export const CANVAS_PADDING = 60
 
 /**
- * Snap element's X to the nearest wall of its section.
- *
- * Left section (centerX < dividerX):  snap to left outer wall OR right side of left section
- * Right section (centerX ≥ dividerX): snap to left side of right section OR right outer wall
- *
- * Elements are NOT allowed to float – they must touch one of the two walls of their section.
+ * Snap element's X to the nearest wall of its section (legacy – keeps existing width).
  */
 export function snapXToSection(
   xCm: number,
@@ -33,19 +28,33 @@ export function snapXToSection(
   wardrobeWidth: number,
   dividerX: number
 ): number {
+  return snapElementToSection(xCm, widthCm, wardrobeWidth, dividerX).x
+}
+
+/**
+ * Place element so it fills its section wall-to-wall.
+ * Section is determined by where the element's CENTER falls relative to dividerX.
+ * Returns the correct { x, width } so the element spans the full inner section width.
+ */
+export function snapElementToSection(
+  xCm: number,
+  widthCm: number,
+  wardrobeWidth: number,
+  dividerX: number
+): { x: number; width: number } {
   const centerX = xCm + widthCm / 2
   const halfDiv  = DIVIDER_CM / 2
 
   if (centerX < dividerX) {
-    // ── Left section ──────────────────────────────────────────
-    const snapLeft  = WALL_CM
-    const snapRight = Math.max(snapLeft, dividerX - halfDiv - widthCm)
-    return Math.abs(xCm - snapLeft) <= Math.abs(xCm - snapRight) ? snapLeft : snapRight
+    // Left section
+    const x = WALL_CM
+    const width = dividerX - halfDiv - WALL_CM
+    return { x, width }
   } else {
-    // ── Right section ─────────────────────────────────────────
-    const snapLeft  = dividerX + halfDiv
-    const snapRight = Math.max(snapLeft, wardrobeWidth - WALL_CM - widthCm)
-    return Math.abs(xCm - snapLeft) <= Math.abs(xCm - snapRight) ? snapLeft : snapRight
+    // Right section
+    const x = dividerX + halfDiv
+    const width = wardrobeWidth - WALL_CM - x
+    return { x, width }
   }
 }
 

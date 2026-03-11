@@ -13,6 +13,20 @@ body {
   color: #e2e8f0;
   overflow: hidden;
   direction: rtl;
+  /* Safe area for iPad notch / home bar */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Prevent long-press callout on touch */
+* {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 ::-webkit-scrollbar { width: 4px; }

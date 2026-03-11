@@ -4,22 +4,29 @@ import type { ComponentTemplate } from '../../types/wardrobe.types'
 
 interface Props {
   onAdd: (template: ComponentTemplate) => void
+  onTouchDragStart?: (template: ComponentTemplate, x: number, y: number) => void
 }
 
-export default function ComponentsPanel({ onAdd }: Props) {
-  const [collapsed, setCollapsed] = useState(false)
+export default function ComponentsPanel({ onAdd, onTouchDragStart }: Props) {
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024)
 
   const handleDragStart = (e: React.DragEvent, template: ComponentTemplate) => {
     e.dataTransfer.setData('application/wardrobe-component', JSON.stringify(template))
     e.dataTransfer.effectAllowed = 'copy'
   }
 
+  const handlePointerDown = (e: React.PointerEvent, template: ComponentTemplate) => {
+    if (e.pointerType === 'mouse') return // mouse uses HTML5 drag
+    e.preventDefault()
+    onTouchDragStart?.(template, e.clientX, e.clientY)
+  }
+
   if (collapsed) {
     return (
-      <aside className="w-8 flex flex-col shrink-0 items-center pt-3 cursor-pointer"
+      <aside className="w-10 flex flex-col shrink-0 items-center pt-4 cursor-pointer"
         style={{ background: '#111827', borderLeft: '1px solid #1e2d40' }}
         onClick={() => setCollapsed(false)}>
-        <div className="text-slate-600 text-[10px]" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+        <div className="text-slate-500 text-[11px]" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
           רכיבים ▶
         </div>
       </aside>
@@ -33,7 +40,8 @@ export default function ComponentsPanel({ onAdd }: Props) {
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #1e2d40' }}>
         <h2 className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">רכיבים</h2>
         <button onClick={() => setCollapsed(true)}
-          className="text-slate-600 hover:text-slate-400 text-xs w-6 h-6 flex items-center justify-center rounded transition-colors">
+          className="text-slate-600 hover:text-slate-400 text-xs w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+          style={{ background: '#0f1623' }}>
           ▶
         </button>
       </div>
@@ -44,9 +52,10 @@ export default function ComponentsPanel({ onAdd }: Props) {
             key={template.type}
             draggable
             onDragStart={(e) => handleDragStart(e, template)}
+            onPointerDown={(e) => handlePointerDown(e, template)}
             onClick={() => onAdd(template)}
-            className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-grab active:cursor-grabbing transition-all duration-150 select-none min-h-[56px]"
-            style={{ background: '#1a2535', border: '1px solid #1e2d40' }}
+            className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-grab active:cursor-grabbing transition-all duration-150 select-none min-h-[60px]"
+            style={{ background: '#1a2535', border: '1px solid #1e2d40', touchAction: 'none' }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#1e2d40'
               e.currentTarget.style.borderColor = '#2d4160'

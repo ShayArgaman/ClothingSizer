@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useWardrobeStore } from '../../store/wardrobeStore'
 import { MATERIALS, DIM_LABELS, DOOR_TYPE_LABELS } from '../../types/wardrobe.types'
-import type { Material, DoorType } from '../../types/wardrobe.types'
+import type { Material, DoorType, MirrorSide } from '../../types/wardrobe.types'
 import { getUnusedSpace } from '../../utils/validation'
 
 function PanelSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -52,7 +52,7 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
 }
 
 export default function PropertiesPanel() {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024)
   const {
     wardrobe, door, elements, selectedId,
     setWardrobeDimensions, setDoorConfig,
@@ -67,10 +67,10 @@ export default function PropertiesPanel() {
 
   if (collapsed) {
     return (
-      <aside className="w-8 flex flex-col shrink-0 items-center pt-3 cursor-pointer"
+      <aside className="w-10 flex flex-col shrink-0 items-center pt-4 cursor-pointer"
         style={{ background: '#111827', borderRight: '1px solid #1e2d40' }}
         onClick={() => setCollapsed(false)}>
-        <div className="text-slate-600 text-[10px]" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+        <div className="text-slate-500 text-[11px]" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
           ◀ מאפיינים
         </div>
       </aside>
@@ -143,13 +143,36 @@ export default function PropertiesPanel() {
             ))}
           </div>
           {door.doorType !== 'none' && (
-            <div className="flex items-center justify-between py-1">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🪞</span>
-                <span className="text-[12px] text-slate-400">תוספת מראה</span>
+            <>
+              <div className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🪞</span>
+                  <span className="text-[12px] text-slate-400">תוספת מראה</span>
+                </div>
+                <ToggleSwitch checked={door.hasMirror} onChange={(v) => setDoorConfig({ hasMirror: v })} />
               </div>
-              <ToggleSwitch checked={door.hasMirror} onChange={(v) => setDoorConfig({ hasMirror: v })} />
-            </div>
+              {door.hasMirror && (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] text-slate-500 mb-1">צד המראה</div>
+                  <div className="flex gap-1.5">
+                    {(['right', 'left', 'both'] as MirrorSide[]).map((s) => {
+                      const label = s === 'right' ? 'ימין' : s === 'left' ? 'שמאל' : 'שניהם'
+                      return (
+                        <button key={s} onClick={() => setDoorConfig({ mirrorSide: s })}
+                          className="flex-1 py-1.5 text-[10px] rounded-lg transition-all min-h-[32px] font-medium"
+                          style={{
+                            background: door.mirrorSide === s ? '#1e3a5f' : '#0f1623',
+                            border: `1px solid ${door.mirrorSide === s ? '#3b82f6' : '#2d3f55'}`,
+                            color: door.mirrorSide === s ? '#93c5fd' : '#64748b',
+                          }}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </PanelSection>
@@ -165,10 +188,12 @@ export default function PropertiesPanel() {
         ) : (
           <div className="space-y-3">
             <div className="space-y-2.5">
-              <DimInput label={DIM_LABELS.width}  value={selected.width}  onChange={(v) => updateElement(selected.id, { width: v })} />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-500 w-14 shrink-0">{DIM_LABELS.width}</span>
+                <span className="text-xs text-slate-400 font-mono">{selected.width} ס״מ</span>
+              </div>
               <DimInput label={DIM_LABELS.height} value={selected.height} onChange={(v) => updateElement(selected.id, { height: v })} />
               <DimInput label={DIM_LABELS.depth}  value={selected.depth}  onChange={(v) => updateElement(selected.id, { depth: v })} />
-              <DimInput label={DIM_LABELS.x} value={selected.x} min={0} onChange={(v) => updateElement(selected.id, { x: v })} />
               <DimInput label={DIM_LABELS.y} value={selected.y} min={0} onChange={(v) => updateElement(selected.id, { y: v })} />
             </div>
 

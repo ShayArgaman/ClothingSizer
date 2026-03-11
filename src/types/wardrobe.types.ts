@@ -2,9 +2,12 @@ export type ElementType = 'shelf' | 'hanging-rail' | 'drawer' | 'shoe-rack' | 'c
 export type Material = 'oak' | 'walnut' | 'white-mdf' | 'grey-mdf' | 'black-mdf'
 export type DoorType = 'none' | 'hinged' | 'sliding'
 
+export type MirrorSide = 'left' | 'right' | 'both'
+
 export interface SectionConfig {
   doorType: DoorType
   hasMirror: boolean
+  mirrorSide: MirrorSide
 }
 
 export interface WardrobeElement {
@@ -124,6 +127,6 @@ export const DIM_LABELS: Record<string, string> = {
 
 export const DOOR_TYPE_LABELS: Record<DoorType, string> = {
   none:   'ללא',
-  hinged: 'צירים',
-  sliding:'הזזה',
+  hinged: 'הזזה',
+  sliding:'צירים',
 }

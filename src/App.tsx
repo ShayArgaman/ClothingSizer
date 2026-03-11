@@ -1,27 +1,37 @@
-import { useCallback } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import WardrobeCanvas from './components/Canvas/WardrobeCanvas'
+import type { WardrobeCanvasHandle } from './components/Canvas/WardrobeCanvas'
 import ComponentsPanel from './components/Panels/ComponentsPanel'
 import PropertiesPanel from './components/Panels/PropertiesPanel'
 import AIAdvisorPanel from './components/AIAdvisor/AIAdvisorPanel'
 import { useWardrobeStore } from './store/wardrobeStore'
 import type { ComponentTemplate, WardrobeElement } from './types/wardrobe.types'
-import { snapCm, snapXToSection } from './utils/dimensions'
+import { snapCm, snapElementToSection } from './utils/dimensions'
 
 let idCounter = 1
 const genId = () => `el-${Date.now()}-${idCounter++}`
 
+interface GhostState {
+  template: ComponentTemplate
+  x: number
+  y: number
+}
+
 export default function App() {
   const { addElement, clearAll, elements, wardrobe } = useWardrobeStore()
+  const canvasRef = useRef<WardrobeCanvasHandle>(null)
+  const ghostRef = useRef<GhostState | null>(null)
+  const [ghost, setGhost] = useState<GhostState | null>(null)
 
   const createElement = useCallback(
-    (template: ComponentTemplate, x = 0, y = 0): WardrobeElement => {
-      const halfW = snapCm(wardrobe.width / 2)
+    (template: ComponentTemplate, x = 0, y = 0, width?: number): WardrobeElement => {
+      const w = width ?? snapCm(wardrobe.width / 2)
       return {
         id: genId(),
         type: template.type,
-        x: Math.max(0, Math.min(x, wardrobe.width - halfW)),
+        x: Math.max(0, x),
         y: snapCm(Math.min(y, wardrobe.height - template.defaultHeight)),
-        width: halfW,
+        width: w,
         height: template.defaultHeight,
         depth: template.defaultDepth,
         color: template.color,
@@ -34,17 +44,55 @@ export default function App() {
 
   const handleAddFromPanel = useCallback(
     (template: ComponentTemplate) => {
-      const halfW = snapCm(wardrobe.width / 2)
-      const snappedX = snapXToSection(0, halfW, wardrobe.width, wardrobe.width / 2)
-      addElement(createElement(template, snappedX, 0))
+      const { x, width } = snapElementToSection(0, 1, wardrobe.width, wardrobe.width / 2)
+      addElement(createElement(template, x, 0, width))
     },
     [addElement, createElement, wardrobe]
   )
 
   const handleCanvasDrop = useCallback(
-    (template: ComponentTemplate, x: number, y: number) => addElement(createElement(template, x, y)),
+    (template: ComponentTemplate, x: number, y: number, sectionWidth: number) =>
+      addElement(createElement(template, x, y, sectionWidth)),
     [addElement, createElement]
   )
+
+  // ── Touch drag from panel ──────────────────────────────────────────────────
+  const handleTouchDragStart = useCallback((template: ComponentTemplate, x: number, y: number) => {
+    const state = { template, x, y }
+    ghostRef.current = state
+    setGhost(state)
+
+    const onMove = (e: PointerEvent) => {
+      const next = { template, x: e.clientX, y: e.clientY }
+      ghostRef.current = next
+      setGhost(next)
+    }
+
+    const onUp = (e: PointerEvent) => {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      const dropped = canvasRef.current?.tryDrop(template, e.clientX, e.clientY)
+      if (!dropped) {
+        // tapped without dragging far — just add to default position
+        // (only if pointer didn't move much from start)
+        const dx = Math.abs(e.clientX - x), dy = Math.abs(e.clientY - y)
+        if (dx < 10 && dy < 10) handleAddFromPanel(template)
+      }
+      ghostRef.current = null
+      setGhost(null)
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  }, [handleAddFromPanel])
+
+  // Prevent page scroll while dragging
+  useEffect(() => {
+    if (!ghost) return
+    const prevent = (e: TouchEvent) => e.preventDefault()
+    document.addEventListener('touchmove', prevent, { passive: false })
+    return () => document.removeEventListener('touchmove', prevent)
+  }, [!!ghost])
 
   return (
     <div className="h-screen flex flex-col select-none" dir="rtl">
@@ -71,7 +119,7 @@ export default function App() {
                 onClick={clearAll}
                 className="text-[11px] text-red-400/80 hover:text-red-300 px-3 py-1.5 rounded-lg
                            border border-red-900/40 hover:border-red-800/60 hover:bg-red-950/30
-                           transition-all min-h-[36px]"
+                           transition-all min-h-[44px]"
               >
                 נקה הכל
               </button>
@@ -83,11 +131,32 @@ export default function App() {
       <div className="flex flex-1 min-h-0">
         <PropertiesPanel />
         <div className="flex-1 flex flex-col min-w-0">
-          <WardrobeCanvas onDrop={handleCanvasDrop} />
+          <WardrobeCanvas ref={canvasRef} onDrop={handleCanvasDrop} />
           <AIAdvisorPanel />
         </div>
-        <ComponentsPanel onAdd={handleAddFromPanel} />
+        <ComponentsPanel onAdd={handleAddFromPanel} onTouchDragStart={handleTouchDragStart} />
       </div>
+
+      {/* Touch drag ghost */}
+      {ghost && (
+        <div
+          className="fixed pointer-events-none z-50 flex items-center gap-2.5 px-3 py-2.5 rounded-2xl shadow-2xl"
+          style={{
+            left: ghost.x - 48,
+            top: ghost.y - 30,
+            background: '#1e2d40',
+            border: `1px solid ${ghost.template.color}66`,
+            boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 0 2px ${ghost.template.color}33`,
+            transform: 'scale(1.08)',
+          }}
+        >
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+            style={{ background: ghost.template.color + '33', border: `1px solid ${ghost.template.color}55` }}>
+            {ghost.template.icon}
+          </div>
+          <span className="text-[13px] font-medium text-slate-200 whitespace-nowrap">{ghost.template.label}</span>
+        </div>
+      )}
     </div>
   )
 }

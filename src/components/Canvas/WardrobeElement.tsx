@@ -1,4 +1,4 @@
-import { Group, Rect, Text, Line, Circle } from 'react-konva'
+import { Group, Rect, Text, Line } from 'react-konva'
 import type { WardrobeElement } from '../../types/wardrobe.types'
 import { cmToPx, formatCm, PX_PER_CM, GRID_CM, snapCm } from '../../utils/dimensions'
 
@@ -11,7 +11,6 @@ interface Props {
 
 const EH = 10    // handle thin axis px
 const EL = 28    // handle long axis px
-const CH = 7     // corner handle radius px
 const HIT = 14   // extra hit area (hitStrokeWidth) for touch
 
 function ElementShape({ element }: { element: WardrobeElement; isSelected: boolean }) {
@@ -119,20 +118,6 @@ export default function WardrobeElementNode({ element, isSelected, onSelect, onC
 
       {isSelected && (
         <>
-          {/* RIGHT edge */}
-          <Rect x={w - EH / 2} y={h / 2 - EL / 2} width={EH} height={EL}
-            fill="#60a5fa" cornerRadius={3} hitStrokeWidth={HIT}
-            draggable
-            onDragMove={(e) => {
-              e.cancelBubble = true
-              const newW = Math.max(cmToPx(15), e.target.x() + EH / 2)
-              const newWcm = Math.round(newW / PX_PER_CM / GRID_CM) * GRID_CM
-              onChange({ width: newWcm })
-              e.target.x(cmToPx(newWcm) - EH / 2)
-              e.target.y(cmToPx(element.height) / 2 - EL / 2)
-            }}
-          />
-
           {/* BOTTOM edge */}
           <Rect x={w / 2 - EL / 2} y={h - EH / 2} width={EL} height={EH}
             fill="#60a5fa" cornerRadius={3} hitStrokeWidth={HIT}
@@ -144,23 +129,6 @@ export default function WardrobeElementNode({ element, isSelected, onSelect, onC
               onChange({ height: newHcm })
               e.target.x(cmToPx(element.width) / 2 - EL / 2)
               e.target.y(cmToPx(newHcm) - EH / 2)
-            }}
-          />
-
-          {/* LEFT edge — snap on dragEnd */}
-          <Rect x={-EH / 2} y={h / 2 - EL / 2} width={EH} height={EL}
-            fill="#60a5fa" cornerRadius={3} hitStrokeWidth={HIT}
-            draggable
-            onDragEnd={(e) => {
-              e.cancelBubble = true
-              const centerDeltaPx = e.target.x() + EH / 2
-              const deltaXcm = centerDeltaPx / PX_PER_CM
-              const newXcm = snapCm(element.x + deltaXcm)
-              const actualDelta = newXcm - element.x
-              const newWidthCm = element.width - actualDelta
-              if (newWidthCm >= 15) onChange({ x: newXcm, width: newWidthCm })
-              e.target.x(-EH / 2)
-              e.target.y(cmToPx(element.height) / 2 - EL / 2)
             }}
           />
 
@@ -178,22 +146,6 @@ export default function WardrobeElementNode({ element, isSelected, onSelect, onC
               if (newHeightCm >= 5) onChange({ y: newYcm, height: newHeightCm })
               e.target.x(cmToPx(element.width) / 2 - EL / 2)
               e.target.y(-EH / 2)
-            }}
-          />
-
-          {/* BOTTOM-RIGHT corner */}
-          <Circle x={w} y={h} radius={CH} fill="#60a5fa" stroke="#1d4ed8" strokeWidth={1}
-            hitStrokeWidth={HIT}
-            draggable
-            onDragMove={(e) => {
-              e.cancelBubble = true
-              const newW = Math.max(cmToPx(15), e.target.x())
-              const newH = Math.max(cmToPx(5), e.target.y())
-              const newWcm = Math.round(newW / PX_PER_CM / GRID_CM) * GRID_CM
-              const newHcm = Math.round(newH / PX_PER_CM / GRID_CM) * GRID_CM
-              onChange({ width: newWcm, height: newHcm })
-              e.target.x(cmToPx(newWcm))
-              e.target.y(cmToPx(newHcm))
             }}
           />
         </>

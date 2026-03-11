@@ -3,7 +3,7 @@ import type { WardrobeState, WardrobeElement, WardrobeDimensions, SectionConfig 
 
 export const useWardrobeStore = create<WardrobeState>((set) => ({
   wardrobe: { width: 200, height: 240, depth: 60 },
-  door: { doorType: 'none', hasMirror: false },
+  door: { doorType: 'none', hasMirror: false, mirrorSide: 'both' as const },
   elements: [],
   selectedId: null,
   unit: 'cm',
