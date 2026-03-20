@@ -10,9 +10,9 @@
 //  - Dimensions: width & height rulers
 // ============================================================
 
-import { Group, Rect, Line, Text, Circle } from 'react-konva'
+import { Group, Rect, Line, Text } from 'react-konva'
 import { cmToPx, formatCm, PX_PER_CM, GRID_CM } from '../../utils/dimensions'
-import type { SectionElement, ShelfElement, DrawerElement, ServettoElement } from '../../types/closet.types'
+import type { SectionElement, ShelfElement } from '../../types/closet.types'
 import { SHELF_THICKNESS } from '../../types/closet.types'
 
 interface Props {

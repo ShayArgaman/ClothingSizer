@@ -21,7 +21,6 @@ import { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle, 
 import { Stage, Layer } from 'react-konva'
 import { useClosetStore } from '../../store/closetStore'
 import { PX_PER_CM, cmToPx } from '../../utils/dimensions'
-import { getInnerHeight } from '../../utils/closetUtils'
 import { validateCloset } from '../../utils/closetValidation'
 import type { ComponentTemplate, ElementKind } from '../../types/closet.types'
 import { WALL_THICKNESS } from '../../types/closet.types'
@@ -55,12 +54,10 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
     viewMode,
     setViewMode,
     selectedElementId,
-    selectedSectionId,
     selectElement,
     selectSection,
     addElement,
     moveElement,
-    removeElement,
     updateElement,
     distributeShelvesEqually: distributeInSection,
   } = useClosetStore()
