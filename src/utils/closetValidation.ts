@@ -36,7 +36,6 @@ import {
   DRAWER_MIN_HEIGHT,
   DRAWER_MAX_HEIGHT,
   SHELF_THICKNESS,
-  WALL_THICKNESS,
 } from '../types/closet.types'
 
 import { getInnerWidth, getInnerHeight } from './closetUtils'
@@ -216,7 +215,6 @@ function validateSlidingDoors(
   errors: ValidationError[],
 ): void {
   const { doors, dimensions } = closet
-  const innerWidth = getInnerWidth(dimensions)
 
   for (let i = 0; i < doors.widths.length; i++) {
     const w = doors.widths[i]

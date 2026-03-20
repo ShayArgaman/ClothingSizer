@@ -116,7 +116,7 @@ export function getDefaultDoorCount(
  * Compute equal door widths for a given count.
  */
 export function computeEqualDoorWidths(
-  closetType: ClosetType,
+  _closetType: ClosetType,
   innerWidth: number,
   count: number,
 ): number[] {
@@ -188,7 +188,7 @@ export function adjustDoorWidth(
     return currentWidths
   }
 
-  const result = currentWidths.map((w, i) => {
+  const result = currentWidths.map((_w, i) => {
     if (i === editedIndex) return clamped
     return perOther
   })

@@ -10,11 +10,11 @@
 // Door Height = Inner Height - External Drawer Height
 // ============================================================
 
-import { Group, Rect, Line, Text } from 'react-konva'
-import type { ClosetConfig, Section, DrawerElement, HandleStyle } from '../../types/closet.types'
+import { Group, Rect, Text } from 'react-konva'
+import type { ClosetConfig, DrawerElement, HandleStyle } from '../../types/closet.types'
 import { WALL_THICKNESS, FRONT_FINISH_LABELS } from '../../types/closet.types'
 import { getInnerHeight, computeDoorHeightForSection, computeDoorYOffset } from '../../utils/closetUtils'
-import { cmToPx, formatCm } from '../../utils/dimensions'
+import { cmToPx } from '../../utils/dimensions'
 
 interface Props {
   closet: ClosetConfig
@@ -81,7 +81,6 @@ function HingeDoor({
   doorIndex: number; handleStyle: HandleStyle; centerHandleDoorIndex: number | null
   frontFinish: string
 }) {
-  const isLeftmost = doorIndex === 0
   const fillProps = getFrontFillProps(frontFinish, wPx, hPx)
 
   // Hinge side: even doors hinge left, odd doors hinge right (alternating)
@@ -131,12 +130,12 @@ function HingeDoor({
 
 function SlidingDoor({
   xPx, wPx, hPx,
-  doorIndex, totalDoors,
+  doorIndex,
   frontFinish,
   strips,
 }: {
   xPx: number; wPx: number; hPx: number
-  doorIndex: number; totalDoors: number
+  doorIndex: number
   frontFinish: string
   strips: { positions: number[]; material: string } | null
 }) {
@@ -300,7 +299,6 @@ export default function ExternalView({ closet }: Props) {
                 wPx={doorWpx}
                 hPx={doorHpx}
                 doorIndex={doorIdx}
-                totalDoors={closet.doors.count}
                 frontFinish={closet.frontFinish}
                 strips={closet.doors.strips}
               />

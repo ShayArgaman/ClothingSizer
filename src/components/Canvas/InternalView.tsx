@@ -13,7 +13,6 @@ import { Group } from 'react-konva'
 import type { ClosetConfig, ValidationError } from '../../types/closet.types'
 import { WALL_THICKNESS, DIVIDER_THICKNESS } from '../../types/closet.types'
 import { getInnerHeight } from '../../utils/closetUtils'
-import { cmToPx } from '../../utils/dimensions'
 import SectionColumn from './SectionColumn'
 import { SectionDivider } from './CanvasOverlays'
 

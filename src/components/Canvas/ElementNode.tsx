@@ -189,7 +189,7 @@ export default function ElementNode({
   const hPx = cmToPx(element.height)
   const isDraggable = !element.fixed
 
-  const handleDragEnd = (e: { target: { x: () => number; y: () => number } }) => {
+  const handleDragEnd = (e: { target: { x: (v?: number) => number; y: (v?: number) => number } }) => {
     if (!isDraggable) return
     const rawYcm = Math.max(0, Math.round(e.target.y() / PX_PER_CM / GRID_CM) * GRID_CM)
     onMove(rawYcm)

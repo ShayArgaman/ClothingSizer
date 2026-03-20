@@ -15,7 +15,7 @@
 import { Group, Rect, Text, Line } from 'react-konva'
 import { cmToPx } from '../../utils/dimensions'
 import { WALL_THICKNESS } from '../../types/closet.types'
-import type { Section, SectionElement, ValidationError } from '../../types/closet.types'
+import type { Section, ValidationError } from '../../types/closet.types'
 import { errorsForElement } from '../../utils/closetValidation'
 import ElementNode from './ElementNode'
 
