@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { COMPONENT_TEMPLATES } from '../../types/wardrobe.types'
-import type { ComponentTemplate } from '../../types/wardrobe.types'
+import { COMPONENT_TEMPLATES } from '../../types/closet.types'
+import type { ComponentTemplate } from '../../types/closet.types'
 
 interface Props {
   onAdd: (template: ComponentTemplate) => void
@@ -11,12 +11,12 @@ export default function ComponentsPanel({ onAdd, onTouchDragStart }: Props) {
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024)
 
   const handleDragStart = (e: React.DragEvent, template: ComponentTemplate) => {
-    e.dataTransfer.setData('application/wardrobe-component', JSON.stringify(template))
+    e.dataTransfer.setData('application/closet-component', JSON.stringify(template))
     e.dataTransfer.effectAllowed = 'copy'
   }
 
   const handlePointerDown = (e: React.PointerEvent, template: ComponentTemplate) => {
-    if (e.pointerType === 'mouse') return // mouse uses HTML5 drag
+    if (e.pointerType === 'mouse') return
     e.preventDefault()
     onTouchDragStart?.(template, e.clientX, e.clientY)
   }
@@ -49,7 +49,7 @@ export default function ComponentsPanel({ onAdd, onTouchDragStart }: Props) {
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {COMPONENT_TEMPLATES.map((template) => (
           <div
-            key={template.type}
+            key={template.kind}
             draggable
             onDragStart={(e) => handleDragStart(e, template)}
             onPointerDown={(e) => handlePointerDown(e, template)}
@@ -67,7 +67,7 @@ export default function ComponentsPanel({ onAdd, onTouchDragStart }: Props) {
           >
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-              style={{ background: template.color + '22', border: `1px solid ${template.color}44` }}
+              style={{ background: 'rgba(200,169,126,0.13)', border: '1px solid rgba(200,169,126,0.28)' }}
             >
               {template.icon}
             </div>
