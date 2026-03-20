@@ -8,7 +8,7 @@ import {
 } from '../../types/closet.types'
 import type {
   ClosetType, FrontFinish, HandleStyle,
-  DrawerElement, SectionElement,
+  DrawerElement, SectionElement, SingleDoorPlacement,
 } from '../../types/closet.types'
 import { validateCloset, countBySeverity, errorsForElement, errorsForSection } from '../../utils/closetValidation'
 import { adjustDoorWidth, getInnerWidth, computeEqualDoorWidths } from '../../utils/closetUtils'
@@ -134,6 +134,7 @@ export default function PropertiesPanel() {
     setFrontFinish,
     setDoorCount,
     setDoorWidths,
+    setSingleDoorPlacement,
     setHandleStyle,
     setCenterHandleDoor,
     updateElement,
@@ -305,6 +306,21 @@ export default function PropertiesPanel() {
             {closet.doors.count === 1 && (
               <div className="text-[10px] text-slate-600">
                 דלת 1: {closet.doors.widths[0]} ס״מ
+              </div>
+            )}
+
+            {/* Single door placement (hinge + odd count) */}
+            {closet.closetType === 'hinge' && closet.doors.count > 1 && closet.doors.count % 2 !== 0 && (
+              <div>
+                <div className="text-[10px] text-slate-500 mb-1.5">מיקום דלת בודדת</div>
+                <ToggleButton
+                  options={[
+                    { value: 'right', label: 'ימין' },
+                    { value: 'left', label: 'שמאל' },
+                  ]}
+                  value={closet.doors.singleDoorPlacement ?? 'right'}
+                  onChange={(v) => setSingleDoorPlacement(v as SingleDoorPlacement)}
+                />
               </div>
             )}
 

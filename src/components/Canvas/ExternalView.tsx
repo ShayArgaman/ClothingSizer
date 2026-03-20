@@ -215,48 +215,81 @@ export default function ExternalView({ closet }: Props) {
   const innerHeight = getInnerHeight(closet.dimensions)
   const wall = cmToPx(WALL_THICKNESS)
 
+  // Build per-door X positions from the widths array
+  const doorPositions: { xCm: number; widthCm: number }[] = []
+  let doorXCursor = 0
+  for (let i = 0; i < closet.doors.count; i++) {
+    doorPositions.push({ xCm: doorXCursor, widthCm: closet.doors.widths[i] })
+    doorXCursor += closet.doors.widths[i]
+  }
+
+  // Map each door index to its parent section (via section.doorIndices)
+  const doorToSection = new Map<number, typeof closet.sections[0]>()
+  for (const sec of closet.sections) {
+    for (const di of sec.doorIndices) {
+      doorToSection.set(di, sec)
+    }
+  }
+
+  // Track which sections have already rendered their external drawers
+  const renderedSections = new Set<string>()
+
   return (
     <Group>
-      {closet.sections.map((section, sectionIdx) => {
-        const doorWidth = closet.doors.widths[sectionIdx] ?? section.width
-        const doorXcm = section.x + WALL_THICKNESS
-        const doorXpx = cmToPx(doorXcm)
-        const doorWpx = cmToPx(doorWidth)
+      {doorPositions.map((door, doorIdx) => {
+        const section = doorToSection.get(doorIdx)
+        if (!section) return null
 
-        // Dynamic door height: subtract external drawers
+        const doorXpx = cmToPx(door.xCm + WALL_THICKNESS)
+        const doorWpx = cmToPx(door.widthCm)
+
+        // Door height is per-section (accounts for external drawers)
         const doorHeightCm = computeDoorHeightForSection(section, innerHeight)
         const doorYOffsetCm = computeDoorYOffset(section)
         const doorHpx = cmToPx(doorHeightCm)
         const doorYpx = cmToPx(closet.dimensions.height - WALL_THICKNESS - doorYOffsetCm) - doorHpx
 
-        // External drawer height for this section
-        const externalDrawers = section.elements.filter(
-          (el): el is DrawerElement =>
-            (el.kind === 'drawer-pair' || el.kind === 'drawer-single')
-            && el.placement === 'external',
-        )
-        const externalDrawerTotalH = externalDrawers.reduce((sum, d) => sum + d.height, 0)
+        // External drawers — render once per section, spanning full section width
+        let externalDrawerNode = null
+        if (!renderedSections.has(section.id)) {
+          renderedSections.add(section.id)
+          const externalDrawers = section.elements.filter(
+            (el): el is DrawerElement =>
+              (el.kind === 'drawer-pair' || el.kind === 'drawer-single')
+              && el.placement === 'external',
+          )
+          const externalDrawerTotalH = externalDrawers.reduce((sum, d) => sum + d.height, 0)
 
-        return (
-          <Group key={section.id}>
-            {/* External drawers — rendered at the bottom of the closet */}
-            {externalDrawerTotalH > 0 && (
+          if (externalDrawerTotalH > 0) {
+            // Section spans from its first door to its last door
+            const firstDoorIdx = section.doorIndices[0]
+            const lastDoorIdx = section.doorIndices[section.doorIndices.length - 1]
+            const secXpx = cmToPx(doorPositions[firstDoorIdx].xCm + WALL_THICKNESS)
+            const secEndXcm = doorPositions[lastDoorIdx].xCm + doorPositions[lastDoorIdx].widthCm
+            const secWpx = cmToPx(secEndXcm + WALL_THICKNESS) - secXpx
+
+            externalDrawerNode = (
               <ExternalDrawerBlock
-                xPx={doorXpx}
-                wPx={doorWpx}
+                xPx={secXpx}
+                wPx={secWpx}
                 totalHeight={externalDrawerTotalH}
                 color={closet.frontMaterial.color}
               />
-            )}
+            )
+          }
+        }
 
-            {/* Door panel — positioned above external drawers */}
+        return (
+          <Group key={`door-${doorIdx}`}>
+            {externalDrawerNode}
+
             {closet.closetType === 'hinge' ? (
               <HingeDoor
                 xPx={doorXpx}
                 wPx={doorWpx}
                 hPx={doorHpx}
                 yOffsetPx={doorYpx}
-                doorIndex={sectionIdx}
+                doorIndex={doorIdx}
                 handleStyle={closet.doors.handleStyle}
                 centerHandleDoorIndex={closet.doors.centerHandleDoorIndex}
                 frontFinish={closet.frontFinish}
@@ -266,7 +299,7 @@ export default function ExternalView({ closet }: Props) {
                 xPx={doorXpx}
                 wPx={doorWpx}
                 hPx={doorHpx}
-                doorIndex={sectionIdx}
+                doorIndex={doorIdx}
                 totalDoors={closet.doors.count}
                 frontFinish={closet.frontFinish}
                 strips={closet.doors.strips}

@@ -143,6 +143,8 @@ export interface StripConfig {
   positions: number[]
 }
 
+export type SingleDoorPlacement = 'left' | 'right'
+
 export interface DoorConfig {
   /** Number of doors */
   count: number
@@ -157,6 +159,11 @@ export interface DoorConfig {
   centerHandleDoorIndex: number | null
   /** Separation strips — only for sliding closets */
   strips: StripConfig | null
+  /**
+   * For hinge closets with an odd number of doors: which side
+   * the unpaired single door sits on. Default: 'right'.
+   */
+  singleDoorPlacement?: SingleDoorPlacement
 }
 
 // ── Section (vertical column) ───────────────────────────────
@@ -176,6 +183,12 @@ export interface Section {
    * the closet bottom in cm. Default ~80cm.
    */
   structuralShelfY: number
+  /**
+   * Door indices (0-based) that this section covers.
+   * For hinge: usually 2 doors per section (pair).
+   * For sliding: 1 door per section.
+   */
+  doorIndices: number[]
 }
 
 // ── Section Elements ────────────────────────────────────────

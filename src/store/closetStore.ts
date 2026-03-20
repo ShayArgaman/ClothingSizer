@@ -20,6 +20,7 @@ import type {
   ElementKind,
   DrawerPlacement,
   ValidationError,
+  SingleDoorPlacement,
 } from '../types/closet.types'
 
 import {
@@ -67,6 +68,7 @@ export interface ClosetStore {
   // ── Door actions ──
   setDoorCount: (count: number) => void
   setDoorWidths: (widths: number[]) => void
+  setSingleDoorPlacement: (placement: SingleDoorPlacement) => void
   setHandleStyle: (style: HandleStyle) => void
   setCenterHandleDoor: (index: number | null) => void
   setStrips: (strips: StripConfig | null) => void
@@ -112,7 +114,7 @@ function createInitialCloset(): ClosetConfig {
     strips: null,
   }
 
-  const sections = deriveSections(doors, dimensions)
+  const sections = deriveSections(doors, dimensions, closetType)
   // Add structural shelf to each section
   for (const sec of sections) {
     sec.elements.push(
@@ -139,6 +141,7 @@ function rebuildDoorsAndSections(
   dimensions: ClosetDimensions,
   existingSections?: Section[],
   existingDoorCount?: number,
+  singleDoorPlacement?: SingleDoorPlacement,
 ): { doors: DoorConfig; sections: Section[] } {
   const innerWidth = getInnerWidth(dimensions)
   const validCounts = getValidDoorCounts(closetType, dimensions.width)
@@ -157,9 +160,10 @@ function rebuildDoorsAndSections(
     handleStyle: closetType === 'hinge' ? 'point' : 'point',
     centerHandleDoorIndex: null,
     strips: null,
+    singleDoorPlacement,
   }
 
-  const sections = deriveSections(doors, dimensions, existingSections)
+  const sections = deriveSections(doors, dimensions, closetType, existingSections)
 
   // Ensure each section has a structural shelf
   const innerHeight = getInnerHeight(dimensions)
@@ -230,7 +234,8 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       }
 
       const { doors, sections } = rebuildDoorsAndSections(
-        type, dims, existingSections,
+        type, dims, existingSections, undefined,
+        type === 'hinge' ? state.closet.doors.singleDoorPlacement : undefined,
       )
 
       return {
@@ -256,6 +261,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
         newDims,
         state.closet.sections,
         state.closet.doors.count,
+        state.closet.doors.singleDoorPlacement,
       )
 
       return {
@@ -303,7 +309,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       }
 
       const sections = deriveSections(
-        doors, state.closet.dimensions, state.closet.sections,
+        doors, state.closet.dimensions, state.closet.closetType, state.closet.sections,
       )
 
       // Ensure structural shelves
@@ -329,8 +335,31 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
       const doors: DoorConfig = { ...state.closet.doors, widths: clamped }
       const sections = deriveSections(
-        doors, state.closet.dimensions, state.closet.sections,
+        doors, state.closet.dimensions, state.closet.closetType, state.closet.sections,
       )
+
+      return {
+        closet: { ...state.closet, doors, sections },
+      }
+    }),
+
+  setSingleDoorPlacement: (placement: SingleDoorPlacement) =>
+    set(state => {
+      const doors: DoorConfig = { ...state.closet.doors, singleDoorPlacement: placement }
+      const sections = deriveSections(
+        doors, state.closet.dimensions, state.closet.closetType, state.closet.sections,
+      )
+
+      // Ensure structural shelves
+      const innerHeight = getInnerHeight(state.closet.dimensions)
+      for (const sec of sections) {
+        const hasStructural = sec.elements.some(
+          el => el.kind === 'shelf' && (el as any).isStructural
+        )
+        if (!hasStructural) {
+          sec.elements.push(createStructuralShelf(computeStructuralShelfY(innerHeight)))
+        }
+      }
 
       return {
         closet: { ...state.closet, doors, sections },

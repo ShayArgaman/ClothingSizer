@@ -12,6 +12,7 @@ import type {
   DrawerElement,
   ElementKind,
   DrawerPlacement,
+  SingleDoorPlacement,
 } from '../types/closet.types'
 
 import {
@@ -207,45 +208,104 @@ export function adjustDoorWidth(
   return finalClamped
 }
 
+// ── Door-to-Section Grouping ────────────────────────────────
+
+/**
+ * Group door indices into sections.
+ *
+ * - **Hinge closets**: 2 doors = 1 section (pair).
+ *   Odd count: one section gets a single door, placed left or right
+ *   based on `singleDoorPlacement`.
+ * - **Sliding closets**: 1 door = 1 section.
+ *
+ * Returns an array of door-index groups, e.g. [[0,1],[2,3],[4]]
+ */
+export function groupDoorsIntoSections(
+  closetType: ClosetType,
+  doorCount: number,
+  singleDoorPlacement: SingleDoorPlacement = 'right',
+): number[][] {
+  if (closetType === 'sliding') {
+    return Array.from({ length: doorCount }, (_, i) => [i])
+  }
+
+  // Hinge: pair doors
+  if (doorCount % 2 === 0) {
+    const groups: number[][] = []
+    for (let i = 0; i < doorCount; i += 2) {
+      groups.push([i, i + 1])
+    }
+    return groups
+  }
+
+  // Odd: single door on one side
+  if (singleDoorPlacement === 'left') {
+    // [0], [1,2], [3,4], …
+    const groups: number[][] = [[0]]
+    for (let i = 1; i < doorCount; i += 2) {
+      groups.push([i, i + 1])
+    }
+    return groups
+  }
+
+  // right (default): [0,1], [2,3], …, [last]
+  const groups: number[][] = []
+  for (let i = 0; i < doorCount - 1; i += 2) {
+    groups.push([i, i + 1])
+  }
+  groups.push([doorCount - 1])
+  return groups
+}
+
 // ── Section Derivation from Doors ───────────────────────────
 
 /**
  * Derive vertical sections from the door configuration.
- * Each door maps to one section. The section inner width equals the
- * door width minus any shared dividers between adjacent sections.
+ *
+ * For hinge closets, doors are grouped in pairs (2 doors → 1 section).
+ * For sliding closets, each door maps to one section.
  */
 export function deriveSections(
   doors: DoorConfig,
   dimensions: ClosetDimensions,
+  closetType: ClosetType,
   existingSections?: Section[],
 ): Section[] {
   const innerHeight = getInnerHeight(dimensions)
+  const groups = groupDoorsIntoSections(
+    closetType,
+    doors.count,
+    doors.singleDoorPlacement,
+  )
+
   let xCursor = 0 // relative to inner left edge
 
-  return doors.widths.map((doorWidth, index) => {
-    const isFirst = index === 0
-    const isLast = index === doors.count - 1
+  return groups.map((doorIndices, sectionIndex) => {
+    const isFirst = sectionIndex === 0
+    const isLast = sectionIndex === groups.length - 1
 
-    // Each section has a divider on its right side (except the last)
-    const dividerRight = isLast ? 0 : DIVIDER_THICKNESS
+    // Total width of the doors covered by this section
+    const groupWidth = doorIndices.reduce((sum, di) => sum + doors.widths[di], 0)
 
-    // Section usable width = door width minus its share of dividers
-    // First section: no left divider. Last: no right divider.
-    const sectionWidth = doorWidth - (isLast ? 0 : DIVIDER_THICKNESS / 2) - (isFirst ? 0 : DIVIDER_THICKNESS / 2)
+    // Section usable width = group width minus its share of dividers
+    const sectionWidth = groupWidth
+      - (isLast ? 0 : DIVIDER_THICKNESS / 2)
+      - (isFirst ? 0 : DIVIDER_THICKNESS / 2)
 
-    const existing = existingSections?.find(s => s.index === index)
+    const existing = existingSections?.find(s => s.index === sectionIndex)
 
     const section: Section = {
       id: existing?.id ?? genId('sec'),
-      index,
+      index: sectionIndex,
       x: xCursor + (isFirst ? 0 : DIVIDER_THICKNESS / 2),
       width: sectionWidth,
       elements: existing?.elements ?? [],
       structuralShelfY: existing?.structuralShelfY
         ?? computeStructuralShelfY(innerHeight),
+      doorIndices,
     }
 
-    xCursor += doorWidth
+    xCursor += groupWidth
 
     return section
   })
