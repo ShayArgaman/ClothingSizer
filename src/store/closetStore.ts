@@ -683,7 +683,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => {
     set({ selectedSectionId: sectionId, selectedElementId: elementId }),
 
   clearAll: () =>
-    set(state => ({
+    set(() => ({
       ...pushHistory(),
       closet: createInitialCloset(),
       selectedSectionId: null,
