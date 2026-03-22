@@ -46,27 +46,82 @@ export function GridLines({ w, h }: { w: number; h: number }) {
 
 // ── Closet Frame ────────────────────────────────────────────
 
-export function ClosetFrame({ width, height }: { width: number; height: number }) {
+export function ClosetFrame({ width, height, bodyColor }: { width: number; height: number; bodyColor?: string }) {
   const wPx = cmToPx(width)
   const hPx = cmToPx(height)
   const wall = cmToPx(WALL_THICKNESS)
+  const bc = bodyColor ?? '#1d3250'
 
   return (
     <Group listening={false}>
-      {/* Background */}
-      <Rect width={wPx} height={hPx} fill="#111c2d" />
-      {/* Subtle side shading */}
-      <Rect x={0} y={0} width={28} height={hPx} fill="rgba(0,0,0,0.18)" />
-      <Rect x={wPx - 28} y={0} width={28} height={hPx} fill="rgba(0,0,0,0.14)" />
-      <Rect x={0} y={0} width={wPx} height={22} fill="rgba(0,0,0,0.14)" />
-      {/* Structural walls */}
-      <Rect x={0} y={0} width={wall} height={hPx} fill="#1d3250" />
-      <Rect x={wPx - wall} y={0} width={wall} height={hPx} fill="#1d3250" />
-      <Rect x={0} y={0} width={wPx} height={wall} fill="#1d3250" />
-      <Rect x={0} y={hPx - wall} width={wPx} height={wall} fill="#1d3250" />
-      {/* Inner wall edges */}
-      <Line points={[wall, wall, wall, hPx - wall]} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
-      <Line points={[wPx - wall, wall, wPx - wall, hPx - wall]} stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+      {/* Background — subtle depth gradient */}
+      <Rect width={wPx} height={hPx}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: hPx }}
+        fillLinearGradientColorStops={[0, '#0e1726', 0.3, '#111c2d', 1, '#0c1420']} />
+      {/* Vignette / ambient occlusion at edges */}
+      <Rect x={0} y={0} width={wall + 16} height={hPx}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: wall + 16, y: 0 }}
+        fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.25)', 1, 'rgba(0,0,0,0)']} />
+      <Rect x={wPx - wall - 16} y={0} width={wall + 16} height={hPx}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: wall + 16, y: 0 }}
+        fillLinearGradientColorStops={[0, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0.22)']} />
+      <Rect x={0} y={0} width={wPx} height={wall + 14}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: wall + 14 }}
+        fillLinearGradientColorStops={[0, 'rgba(0,0,0,0.22)', 1, 'rgba(0,0,0,0)']} />
+      <Rect x={0} y={hPx - wall - 14} width={wPx} height={wall + 14}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: wall + 14 }}
+        fillLinearGradientColorStops={[0, 'rgba(0,0,0,0)', 1, 'rgba(0,0,0,0.18)']} />
+
+      {/* Structural walls — gradient with body material color */}
+      {/* Left wall */}
+      <Rect x={0} y={0} width={wall} height={hPx}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: wall, y: 0 }}
+        fillLinearGradientColorStops={[0, bc, 0.6, bc, 1, 'rgba(255,255,255,0.06)']}
+        opacity={0.85} />
+      <Rect x={0} y={0} width={wall} height={hPx} fill={bc} opacity={0.55} />
+      {/* Right wall */}
+      <Rect x={wPx - wall} y={0} width={wall} height={hPx}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: wall, y: 0 }}
+        fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.06)', 0.4, bc, 1, bc]}
+        opacity={0.85} />
+      <Rect x={wPx - wall} y={0} width={wall} height={hPx} fill={bc} opacity={0.55} />
+      {/* Top wall */}
+      <Rect x={0} y={0} width={wPx} height={wall}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: wall }}
+        fillLinearGradientColorStops={[0, bc, 0.6, bc, 1, 'rgba(255,255,255,0.05)']}
+        opacity={0.85} />
+      <Rect x={0} y={0} width={wPx} height={wall} fill={bc} opacity={0.55} />
+      {/* Bottom wall */}
+      <Rect x={0} y={hPx - wall} width={wPx} height={wall}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: wall }}
+        fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.04)', 0.4, bc, 1, bc]}
+        opacity={0.85} />
+      <Rect x={0} y={hPx - wall} width={wPx} height={wall} fill={bc} opacity={0.55} />
+
+      {/* Inner edge highlights — gives 3D depth illusion */}
+      <Line points={[wall, wall, wall, hPx - wall]}
+        stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+      <Line points={[wPx - wall, wall, wPx - wall, hPx - wall]}
+        stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+      <Line points={[wall, wall, wPx - wall, wall]}
+        stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
+      <Line points={[wall, hPx - wall, wPx - wall, hPx - wall]}
+        stroke="rgba(255,255,255,0.05)" strokeWidth={1} />
+
+      {/* Outer edge shadow */}
+      <Line points={[0, 0, wPx, 0]} stroke="rgba(0,0,0,0.4)" strokeWidth={1.5} />
+      <Line points={[0, hPx, wPx, hPx]} stroke="rgba(0,0,0,0.3)" strokeWidth={1.5} />
+      <Line points={[0, 0, 0, hPx]} stroke="rgba(0,0,0,0.35)" strokeWidth={1.5} />
+      <Line points={[wPx, 0, wPx, hPx]} stroke="rgba(0,0,0,0.3)" strokeWidth={1.5} />
     </Group>
   )
 }
@@ -128,82 +183,6 @@ export function HeightRuler({ height, wardrobeWidth }: { height: number; wardrob
     }
   }
   return <>{els}</>
-}
-
-// ── Human Figure (height reference, right of closet) ────────
-
-export function HumanFigure({ height, wardrobeWidth }: { height: number; wardrobeWidth: number }) {
-  const wPx = cmToPx(wardrobeWidth)
-  const hPx = cmToPx(height)
-  const figureX = wPx + 70 // right of ruler
-
-  function renderFigure(heightCm: number, xOffset: number) {
-    const figH = cmToPx(heightCm)
-    const footY = hPx // bottom of closet = floor
-    const topY = footY - figH
-    const headR = figH * 0.065
-    const headCy = topY + headR
-    const neckY = headCy + headR
-    const shoulderY = neckY + figH * 0.04
-    const shoulderW = figH * 0.15
-    const waistY = shoulderY + figH * 0.28
-    const hipY = waistY + figH * 0.06
-    const kneeY = hipY + figH * 0.22
-    const cx = figureX + xOffset
-
-    const col = 'rgba(147,197,253,0.35)'
-    const colLabel = 'rgba(147,197,253,0.55)'
-
-    return (
-      <Group key={`fig-${heightCm}`} listening={false}>
-        {/* Head */}
-        <Line points={[
-          cx, headCy - headR,
-          cx + headR * 0.7, headCy - headR * 0.3,
-          cx + headR * 0.7, headCy + headR * 0.3,
-          cx, headCy + headR,
-          cx - headR * 0.7, headCy + headR * 0.3,
-          cx - headR * 0.7, headCy - headR * 0.3,
-        ]} closed fill={col} />
-
-        {/* Neck */}
-        <Line points={[cx, neckY, cx, shoulderY]} stroke={col} strokeWidth={1.5} />
-
-        {/* Shoulders + arms */}
-        <Line points={[cx - shoulderW, shoulderY, cx + shoulderW, shoulderY]}
-          stroke={col} strokeWidth={1.5} />
-        <Line points={[cx - shoulderW, shoulderY, cx - shoulderW * 0.85, waistY * 0.55 + shoulderY * 0.45]}
-          stroke={col} strokeWidth={1.2} />
-        <Line points={[cx + shoulderW, shoulderY, cx + shoulderW * 0.85, waistY * 0.55 + shoulderY * 0.45]}
-          stroke={col} strokeWidth={1.2} />
-
-        {/* Torso */}
-        <Line points={[cx, shoulderY, cx, hipY]} stroke={col} strokeWidth={1.5} />
-
-        {/* Legs */}
-        <Line points={[cx, hipY, cx - shoulderW * 0.5, kneeY, cx - shoulderW * 0.45, footY]}
-          stroke={col} strokeWidth={1.2} />
-        <Line points={[cx, hipY, cx + shoulderW * 0.5, kneeY, cx + shoulderW * 0.45, footY]}
-          stroke={col} strokeWidth={1.2} />
-
-        {/* Height label */}
-        <Text text={`${(heightCm / 100).toFixed(2)} מ׳`}
-          x={cx - 20} y={topY - 16}
-          fontSize={10} fill={colLabel} fontStyle="bold" />
-
-        {/* Horizontal guide line from figure top to closet */}
-        <Line points={[wPx + 12, footY - figH, cx - headR - 4, footY - figH]}
-          stroke="rgba(147,197,253,0.15)" strokeWidth={0.5} dash={[3, 3]} />
-      </Group>
-    )
-  }
-
-  return (
-    <Group listening={false}>
-      {renderFigure(160, 0)}
-      {renderFigure(180, 50)}
-    </Group>
-  )
 }
 
 // ── Section Divider (vertical wall between sections) ────────

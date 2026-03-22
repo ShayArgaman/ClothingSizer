@@ -57,10 +57,25 @@ function DimInput({
     }
   }
 
+  const stepBy = (dir: 1 | -1) => {
+    const next = Math.min(max, Math.max(min, value + step * dir))
+    onChange(next)
+    setLocalValue(String(next))
+  }
+
   return (
     <label className="flex items-center justify-between gap-2">
       <span className="text-xs text-slate-400 w-14 shrink-0">{label}</span>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => stepBy(-1)}
+          disabled={disabled || value <= min}
+          className="w-6 h-6 flex items-center justify-center rounded-md text-xs text-slate-400
+                     hover:text-slate-200 hover:bg-slate-700/50 transition-all
+                     disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: '#0f1623', border: '1px solid #2d3f55' }}
+        >−</button>
         <input
           type="number" min={min} max={max} step={step} value={displayValue}
           disabled={disabled}
@@ -68,11 +83,21 @@ function DimInput({
           onBlur={() => { setFocused(false); commit() }}
           onChange={(e) => setLocalValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur() } }}
-          className="w-16 px-2 py-1.5 text-xs rounded-lg text-slate-200 text-center
+          className="w-14 px-1 py-1.5 text-xs rounded-lg text-slate-200 text-center
                      focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all
-                     disabled:opacity-40 disabled:cursor-not-allowed"
+                     disabled:opacity-40 disabled:cursor-not-allowed
+                     [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           style={{ background: '#0f1623', border: '1px solid #2d3f55' }}
         />
+        <button
+          type="button"
+          onClick={() => stepBy(1)}
+          disabled={disabled || value >= max}
+          className="w-6 h-6 flex items-center justify-center rounded-md text-xs text-slate-400
+                     hover:text-slate-200 hover:bg-slate-700/50 transition-all
+                     disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: '#0f1623', border: '1px solid #2d3f55' }}
+        >+</button>
         <span className="text-[10px] text-slate-600">ס״מ</span>
       </div>
     </label>

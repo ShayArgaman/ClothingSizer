@@ -55,10 +55,12 @@ export default function SectionColumn({
 
   return (
     <Group x={xPx} y={cmToPx(WALL_THICKNESS)}>
-      {/* Section background — clickable to select section */}
+      {/* Section background — subtle depth gradient, clickable to select */}
       <Rect
         width={wPx} height={hPx}
-        fill="transparent"
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: hPx }}
+        fillLinearGradientColorStops={[0, 'rgba(255,255,255,0.012)', 0.5, 'transparent', 1, 'rgba(0,0,0,0.02)']}
         onClick={() => onSelectSection(section.id)}
         onTap={() => onSelectSection(section.id)}
       />

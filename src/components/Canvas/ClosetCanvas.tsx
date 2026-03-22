@@ -19,13 +19,14 @@
 
 import { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle, useCallback } from 'react'
 import { Stage, Layer } from 'react-konva'
+import Konva from 'konva'
 import { useClosetStore } from '../../store/closetStore'
 import { PX_PER_CM, cmToPx } from '../../utils/dimensions'
 import { validateCloset } from '../../utils/closetValidation'
 import type { ComponentTemplate, ElementKind } from '../../types/closet.types'
 import { WALL_THICKNESS } from '../../types/closet.types'
 
-import { GridLines, ClosetFrame, DimensionLines, HeightRuler, HumanFigure } from './CanvasOverlays'
+import { GridLines, ClosetFrame, DimensionLines, HeightRuler } from './CanvasOverlays'
 import InternalView from './InternalView'
 import ExternalView from './ExternalView'
 
@@ -41,12 +42,14 @@ const GRID_CM = 5
 
 export interface ClosetCanvasHandle {
   tryDrop: (template: ComponentTemplate, clientX: number, clientY: number) => boolean
+  getStageDataUrl: () => string | null
 }
 
 // ── Component ───────────────────────────────────────────────
 
 const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<Konva.Stage>(null)
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 })
 
   const {
@@ -160,6 +163,9 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
       handleDropAt(template.kind, coords.xCm, coords.yCm)
       return true
     },
+    getStageDataUrl: () => {
+      return stageRef.current?.toDataURL({ pixelRatio: 2 }) ?? null
+    },
   }), [clientToCm, handleDropAt])
 
   // ── Element interaction callbacks ──
@@ -247,6 +253,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
 
       {/* ── Konva Stage ── */}
       <Stage
+        ref={stageRef}
         width={containerSize.width}
         height={containerSize.height}
         onClick={(e) => {
@@ -265,10 +272,9 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
         <Layer x={layerX} y={layerY}>
           {/* Shared overlays */}
           <GridLines w={closet.dimensions.width} h={closet.dimensions.height} />
-          <ClosetFrame width={closet.dimensions.width} height={closet.dimensions.height} />
+          <ClosetFrame width={closet.dimensions.width} height={closet.dimensions.height} bodyColor={closet.bodyMaterial.color} />
           <DimensionLines width={closet.dimensions.width} height={closet.dimensions.height} />
           <HeightRuler height={closet.dimensions.height} wardrobeWidth={closet.dimensions.width} />
-          <HumanFigure height={closet.dimensions.height} wardrobeWidth={closet.dimensions.width} />
 
           {/* View-specific content */}
           {viewMode === 'internal' ? (

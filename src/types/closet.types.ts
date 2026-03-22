@@ -28,6 +28,8 @@ export type FrontFinish =
   | 'frosted-glass'
   | 'bronze'
   | 'gold'
+  | 'mirror'
+  | 'black-glass'
 
 export type Material = 'oak' | 'walnut' | 'white-mdf' | 'grey-mdf' | 'black-mdf'
 
@@ -44,9 +46,11 @@ export const MATERIALS: { value: Material; label: string; color: string }[] = [
 export const FRONT_FINISH_LABELS: Record<FrontFinish, string> = {
   standard:       'סטנדרטי',
   'clear-glass':  'זכוכית שקופה',
-  'frosted-glass':'זכוכית מושחרת',
+  'frosted-glass':'זכוכית חלבית',
   bronze:         'ברונזה',
   gold:           'זהב',
+  mirror:         'מראה',
+  'black-glass':  'זכוכית שחורה',
 }
 
 export const HANDLE_STYLE_LABELS: Record<HandleStyle, string> = {
@@ -238,6 +242,13 @@ export type SectionElement =
   | ServettoElement
   | DrawerElement
   | ShoeRackElement
+
+// ── Customer Details (Lead Capture) ─────────────────────────
+
+export interface CustomerDetails {
+  name: string
+  phone: string
+}
 
 // ── Full Closet Config ──────────────────────────────────────
 

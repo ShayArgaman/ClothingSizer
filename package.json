@@ -12,6 +12,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",
+    "@supabase/supabase-js": "^2.99.3",
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.3.3",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "konva": "^9.3.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

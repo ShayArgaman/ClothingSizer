@@ -21,6 +21,7 @@ import type {
   DrawerPlacement,
   ValidationError,
   SingleDoorPlacement,
+  CustomerDetails,
 } from '../types/closet.types'
 
 import {
@@ -58,6 +59,13 @@ export interface ClosetStore {
   viewMode: ViewMode
   selectedSectionId: string | null
   selectedElementId: string | null
+  customer: CustomerDetails | null
+  designId: string | null
+
+  // ── Customer & persistence ──
+  setCustomer: (details: CustomerDetails) => void
+  setDesignId: (id: string | null) => void
+  loadFromConfig: (config: ClosetConfig, customer?: CustomerDetails | null, designId?: string | null) => void
 
   // ── Closet-level actions ──
   setClosetType: (type: ClosetType) => void
@@ -223,6 +231,26 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
   viewMode: 'internal',
   selectedSectionId: null,
   selectedElementId: null,
+  customer: null,
+  designId: null,
+
+  // ────────────────────────────────────────────────────────
+  // Customer & persistence
+  // ────────────────────────────────────────────────────────
+
+  setCustomer: (details: CustomerDetails) => set({ customer: details }),
+
+  setDesignId: (id: string | null) => set({ designId: id }),
+
+  loadFromConfig: (config: ClosetConfig, customer?: CustomerDetails | null, designId?: string | null) =>
+    set({
+      closet: config,
+      customer: customer ?? null,
+      designId: designId ?? null,
+      selectedSectionId: null,
+      selectedElementId: null,
+      viewMode: 'internal',
+    }),
 
   // ────────────────────────────────────────────────────────
   // Closet-level actions
