@@ -43,6 +43,8 @@ const GRID_CM = 5
 export interface ClosetCanvasHandle {
   tryDrop: (template: ComponentTemplate, clientX: number, clientY: number) => boolean
   getStageDataUrl: () => string | null
+  /** Capture both views: returns { internal, external } data URLs */
+  captureBothViews: () => Promise<{ internal: string; external: string } | null>
 }
 
 // ── Component ───────────────────────────────────────────────
@@ -166,7 +168,38 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
     getStageDataUrl: () => {
       return stageRef.current?.toDataURL({ pixelRatio: 2 }) ?? null
     },
-  }), [clientToCm, handleDropAt])
+    captureBothViews: async () => {
+      if (!stageRef.current) return null
+      const originalMode = viewMode
+
+      // Crop bounds: closet area only (layer offset + closet pixel size + small margin)
+      const pad = 8
+      const cropX = layerX - pad
+      const cropY = layerY - pad
+      const cropW = cmToPx(closet.dimensions.width) + pad * 2
+      const cropH = cmToPx(closet.dimensions.height) + pad * 2
+      const captureOpts = { pixelRatio: 2, x: cropX, y: cropY, width: cropW, height: cropH }
+
+      // Capture current view first
+      const currentUrl = stageRef.current.toDataURL(captureOpts)
+
+      // Switch to the other view
+      const otherMode = originalMode === 'internal' ? 'external' : 'internal'
+      setViewMode(otherMode)
+
+      // Wait for re-render
+      await new Promise(r => setTimeout(r, 150))
+      const otherUrl = stageRef.current!.toDataURL(captureOpts)
+
+      // Restore original view
+      setViewMode(originalMode)
+
+      return {
+        internal: originalMode === 'internal' ? currentUrl : otherUrl,
+        external: originalMode === 'external' ? currentUrl : otherUrl,
+      }
+    },
+  }), [clientToCm, handleDropAt, viewMode, setViewMode, layerX, layerY, closet.dimensions])
 
   // ── Element interaction callbacks ──
   const handleSelectElement = useCallback(

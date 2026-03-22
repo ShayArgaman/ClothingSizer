@@ -86,14 +86,19 @@ export default function App() {
     }
 
     if (action === 'export') {
-      const dataUrl = canvasRef.current?.getStageDataUrl()
-      if (!dataUrl) {
-        showToast('שגיאה בייצוא — נסה שוב')
-        return
-      }
       try {
         showToast('מכין PDF...')
-        await generatePdf({ customer: cust, closet, canvasDataUrl: dataUrl })
+        const views = await canvasRef.current?.captureBothViews()
+        if (!views) {
+          showToast('שגיאה בייצוא — נסה שוב')
+          return
+        }
+        await generatePdf({
+          customer: cust,
+          closet,
+          internalDataUrl: views.internal,
+          externalDataUrl: views.external,
+        })
         showToast('PDF נוצר בהצלחה')
       } catch {
         showToast('שגיאה בייצוא PDF — נסה שוב')

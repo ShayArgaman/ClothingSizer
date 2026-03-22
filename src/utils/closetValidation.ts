@@ -273,7 +273,7 @@ function validateSectionElements(
   errors: ValidationError[],
 ): void {
   const innerHeight = getInnerHeight(closet.dimensions)
-  const sectionLabel = `סקציה ${section.index + 1}`
+  const sectionLabel = `תא ${section.index + 1}`
 
   // ── Structural shelf presence ──
   validateStructuralShelf(closet, section, innerHeight, sectionLabel, errors)

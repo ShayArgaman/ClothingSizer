@@ -3,15 +3,13 @@ import { useClosetStore } from '../../store/closetStore'
 import {
   MATERIALS, FRONT_FINISH_LABELS,
   ELEMENT_KIND_LABELS,
-  HINGE_DOOR_MIN_WIDTH, HINGE_DOOR_MAX_WIDTH,
-  SLIDING_DOOR_MIN_WIDTH, SLIDING_DOOR_MAX_WIDTH,
 } from '../../types/closet.types'
 import type {
   ClosetType, FrontFinish, HandleStyle,
   DrawerElement, SectionElement, SingleDoorPlacement,
 } from '../../types/closet.types'
 import { validateCloset, countBySeverity, errorsForElement, errorsForSection } from '../../utils/closetValidation'
-import { adjustDoorWidth, getInnerWidth, computeEqualDoorWidths } from '../../utils/closetUtils'
+import { getInnerWidth } from '../../utils/closetUtils'
 
 // ── Shared UI components ────────────────────────────────────
 
@@ -133,34 +131,6 @@ function ToggleButton({
   )
 }
 
-// ── Door Width Bar ──────────────────────────────────────────
-
-function DoorWidthBar({ widths }: { widths: number[] }) {
-  const total = widths.reduce((a, b) => a + b, 0)
-  if (total === 0) return null
-
-  return (
-    <div className="flex gap-0.5 h-5 rounded-lg overflow-hidden" style={{ border: '1px solid #2d3f55' }}>
-      {widths.map((w, i) => {
-        const pct = (w / total) * 100
-        return (
-          <div
-            key={i}
-            className="flex items-center justify-center text-[9px] font-mono text-slate-400 transition-all"
-            style={{
-              width: `${pct}%`,
-              background: i % 2 === 0 ? '#1a2535' : '#1e2d40',
-              minWidth: 20,
-            }}
-          >
-            {w}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 // ── Main panel ──────────────────────────────────────────────
 
 export default function PropertiesPanel() {
@@ -176,7 +146,6 @@ export default function PropertiesPanel() {
     setFrontMaterial,
     setFrontFinish,
     setDoorCount,
-    setDoorWidths,
     setSingleDoorPlacement,
     setHandleStyle,
     setCenterHandleDoor,
@@ -196,30 +165,7 @@ export default function PropertiesPanel() {
 
   const validDoorCounts = getDoorConfigurations()
   const innerWidth = getInnerWidth(closet.dimensions)
-
-  const [minDoor, maxDoor] = closet.closetType === 'hinge'
-    ? [HINGE_DOOR_MIN_WIDTH, HINGE_DOOR_MAX_WIDTH]
-    : [SLIDING_DOOR_MIN_WIDTH, SLIDING_DOOR_MAX_WIDTH]
-
-  const isAsymmetric = useMemo(() => {
-    const w = closet.doors.widths
-    return w.length > 1 && !w.every(v => v === w[0])
-  }, [closet.doors.widths])
-
-  const handleDoorWidthChange = (index: number, newWidth: number) => {
-    const result = adjustDoorWidth(
-      closet.closetType,
-      closet.doors.widths,
-      index,
-      newWidth,
-      innerWidth,
-    )
-    setDoorWidths(result)
-  }
-
-  const resetToEqualWidths = () => {
-    setDoorWidths(computeEqualDoorWidths(closet.closetType, innerWidth, closet.doors.count))
-  }
+  const doorWidth = closet.doors.count > 0 ? Math.round(innerWidth / closet.doors.count) : innerWidth
 
   if (collapsed) {
     return (
@@ -275,7 +221,7 @@ export default function PropertiesPanel() {
             <DimInput label="עומק" value={closet.dimensions.depth} min={50} max={60}
               onChange={(v) => setDimensions({ depth: v })} />
             <div className="flex justify-between text-[10px] text-slate-600 px-0.5 pt-1">
-              <span>{closet.sections.length} סקציות</span>
+              <span>{closet.sections.length} תאים</span>
               <span>נפח: {Math.round(closet.dimensions.width * closet.dimensions.height * closet.dimensions.depth / 1000).toLocaleString('he-IL')} ל׳</span>
             </div>
           </div>
@@ -303,54 +249,10 @@ export default function PropertiesPanel() {
               </div>
             </div>
 
-            {/* Visual door width bar */}
-            <DoorWidthBar widths={closet.doors.widths} />
-
-            {/* Per-door width sliders */}
-            {closet.doors.count > 1 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-[10px] text-slate-500">רוחב דלתות</div>
-                  {isAsymmetric && (
-                    <button
-                      onClick={resetToEqualWidths}
-                      className="text-[9px] px-2 py-0.5 rounded-md transition-all"
-                      style={{ background: '#1e3a5f33', border: '1px solid #3b82f633', color: '#93c5fd' }}
-                    >
-                      איפוס שווה
-                    </button>
-                  )}
-                </div>
-                {closet.doors.widths.map((w, i) => (
-                  <div key={i} className="space-y-0.5">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-slate-500">דלת {i + 1}</span>
-                      <span className="text-slate-400 font-mono">{w} ס״מ</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={minDoor}
-                      max={maxDoor}
-                      step={1}
-                      value={w}
-                      onChange={(e) => handleDoorWidthChange(i, Number(e.target.value))}
-                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                      style={{
-                        background: `linear-gradient(to left, #3b82f6 ${((w - minDoor) / (maxDoor - minDoor)) * 100}%, #1e2d40 0%)`,
-                        accentColor: '#3b82f6',
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Single door — just show width */}
-            {closet.doors.count === 1 && (
-              <div className="text-[10px] text-slate-600">
-                דלת 1: {closet.doors.widths[0]} ס״מ
-              </div>
-            )}
+            {/* Door width (read-only — always equal) */}
+            <div className="text-[10px] text-slate-500">
+              רוחב כל דלת: <span className="text-slate-300 font-mono">{doorWidth} ס״מ</span>
+            </div>
 
             {/* Single door placement (hinge + odd count) */}
             {closet.closetType === 'hinge' && closet.doors.count > 1 && closet.doors.count % 2 !== 0 && (
@@ -457,7 +359,7 @@ export default function PropertiesPanel() {
         {/* ── Selected Section ── */}
         {selectedSection && (
           <PanelSection
-            title={`סקציה ${selectedSection.index + 1}`}
+            title={`תא ${selectedSection.index + 1}`}
             badge={sectionErrors.length > 0 ? (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full"
                 style={{

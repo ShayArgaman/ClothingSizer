@@ -39,7 +39,6 @@ import {
   getValidDoorCounts,
   getDefaultDoorCount,
   computeEqualDoorWidths,
-  clampDoorWidths,
   deriveSections,
   computeStructuralShelfY,
   distributeShelvesEqually,
@@ -76,7 +75,6 @@ export interface ClosetStore {
 
   // ── Door actions ──
   setDoorCount: (count: number) => void
-  setDoorWidths: (widths: number[]) => void
   setSingleDoorPlacement: (placement: SingleDoorPlacement) => void
   setHandleStyle: (style: HandleStyle) => void
   setCenterHandleDoor: (index: number | null) => void
@@ -160,22 +158,8 @@ function rebuildDoorsAndSections(
     count = getDefaultDoorCount(closetType, dimensions.width)
   }
 
-  // Preserve asymmetric widths: proportionally rescale if count matches
-  let widths: number[]
-  if (existingDoors && existingDoors.count === count) {
-    const oldSum = existingDoors.widths.reduce((a, b) => a + b, 0)
-    if (oldSum > 0 && oldSum !== innerWidth) {
-      // Proportionally scale
-      const scaled = existingDoors.widths.map(w => Math.round(w * innerWidth / oldSum))
-      const scaledSum = scaled.reduce((a, b) => a + b, 0)
-      scaled[scaled.length - 1] += innerWidth - scaledSum // absorb rounding
-      widths = clampDoorWidths(closetType, scaled, innerWidth)
-    } else {
-      widths = existingDoors.widths
-    }
-  } else {
-    widths = computeEqualDoorWidths(closetType, innerWidth, count)
-  }
+  // All doors are always strictly equal width
+  const widths = computeEqualDoorWidths(closetType, innerWidth, count)
 
   const doors: DoorConfig = {
     count,
@@ -363,21 +347,6 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
           sec.elements.push(createStructuralShelf(computeStructuralShelfY(innerHeight)))
         }
       }
-
-      return {
-        closet: { ...state.closet, doors, sections },
-      }
-    }),
-
-  setDoorWidths: (widths: number[]) =>
-    set(state => {
-      const innerWidth = getInnerWidth(state.closet.dimensions)
-      const clamped = clampDoorWidths(state.closet.closetType, widths, innerWidth)
-
-      const doors: DoorConfig = { ...state.closet.doors, widths: clamped }
-      const sections = deriveSections(
-        doors, state.closet.dimensions, state.closet.closetType, state.closet.sections,
-      )
 
       return {
         closet: { ...state.closet, doors, sections },

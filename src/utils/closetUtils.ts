@@ -20,8 +20,6 @@ import {
   HINGE_DOOR_BASE_WIDTH,
   HINGE_DOOR_MIN_WIDTH,
   HINGE_DOOR_MAX_WIDTH,
-  SLIDING_DOOR_MIN_WIDTH,
-  SLIDING_DOOR_MAX_WIDTH,
   SLIDING_3_DOOR_MIN_WIDTH,
   STRUCTURAL_SHELF_DEFAULT_Y,
   SHELF_THICKNESS,
@@ -113,99 +111,21 @@ export function getDefaultDoorCount(
 }
 
 /**
- * Compute equal door widths for a given count.
+ * Compute strictly equal door widths for a given count.
+ * All doors get exactly the same width (totalWidth / doorCount).
+ * Last door absorbs any fractional rounding.
  */
 export function computeEqualDoorWidths(
   _closetType: ClosetType,
   innerWidth: number,
   count: number,
 ): number[] {
-  const baseWidth = Math.floor(innerWidth / count)
-  const remainder = innerWidth - baseWidth * count
-  // Distribute remainder across leftmost doors (1cm each)
-  return Array.from({ length: count }, (_, i) =>
-    i < remainder ? baseWidth + 1 : baseWidth
-  )
-}
-
-/**
- * Validate that door widths are within allowed ranges.
- * Returns an adjusted copy if needed.
- */
-export function clampDoorWidths(
-  closetType: ClosetType,
-  widths: number[],
-  innerWidth: number,
-): number[] {
-  const [min, max] = closetType === 'hinge'
-    ? [HINGE_DOOR_MIN_WIDTH, HINGE_DOOR_MAX_WIDTH]
-    : [SLIDING_DOOR_MIN_WIDTH, SLIDING_DOOR_MAX_WIDTH]
-
-  let result = widths.map(w => Math.max(min, Math.min(max, w)))
-  // Adjust last door to absorb rounding
-  const sum = result.reduce((a, b) => a + b, 0)
-  if (sum !== innerWidth) {
-    result[result.length - 1] += innerWidth - sum
-  }
-  return result
-}
-
-/**
- * Adjust door widths after the user changes one door's width.
- *
- * Strategy: lock the edited door at its new width, then distribute
- * the remaining inner width equally among the other doors, respecting
- * min/max constraints. If the new width is invalid, clamp it.
- *
- * Returns the full widths array (all doors).
- */
-export function adjustDoorWidth(
-  closetType: ClosetType,
-  currentWidths: number[],
-  editedIndex: number,
-  newWidth: number,
-  innerWidth: number,
-): number[] {
-  const [min, max] = closetType === 'hinge'
-    ? [HINGE_DOOR_MIN_WIDTH, HINGE_DOOR_MAX_WIDTH]
-    : [SLIDING_DOOR_MIN_WIDTH, SLIDING_DOOR_MAX_WIDTH]
-
-  const count = currentWidths.length
-  if (count <= 1) return [innerWidth]
-
-  // Clamp the edited door
-  const clamped = Math.max(min, Math.min(max, newWidth))
-  const remaining = innerWidth - clamped
-  const othersCount = count - 1
-
-  // Each other door gets an equal share of the remaining space
-  const perOther = Math.floor(remaining / othersCount)
-  const extraRemainder = remaining - perOther * othersCount
-
-  // Check if the per-other width is valid
-  if (perOther < min || perOther > max) {
-    // Can't fit — return current widths unchanged
-    return currentWidths
-  }
-
-  const result = currentWidths.map((_w, i) => {
-    if (i === editedIndex) return clamped
-    return perOther
-  })
-
-  // Distribute leftover cm to the last non-edited door
-  const lastOtherIdx = editedIndex === count - 1 ? count - 2 : count - 1
-  result[lastOtherIdx] += extraRemainder
-
-  // Final clamp check
-  const finalClamped = result.map(w => Math.max(min, Math.min(max, w)))
-  const finalSum = finalClamped.reduce((a, b) => a + b, 0)
-  if (finalSum !== innerWidth) {
-    // Absorb difference in last door
-    finalClamped[finalClamped.length - 1] += innerWidth - finalSum
-  }
-
-  return finalClamped
+  const baseWidth = Math.round(innerWidth / count)
+  const widths = Array.from({ length: count }, () => baseWidth)
+  // Absorb rounding difference in last door
+  const sum = widths.reduce((a, b) => a + b, 0)
+  widths[widths.length - 1] += innerWidth - sum
+  return widths
 }
 
 // ── Door-to-Section Grouping ────────────────────────────────

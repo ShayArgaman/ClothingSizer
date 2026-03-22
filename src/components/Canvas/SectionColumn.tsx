@@ -79,7 +79,7 @@ export default function SectionColumn({
 
       {/* Section label */}
       <Text
-        text={`סקציה ${section.index + 1}`}
+        text={`תא ${section.index + 1}`}
         x={4} y={4}
         fontSize={9}
         fill="rgba(148,163,184,0.35)"
