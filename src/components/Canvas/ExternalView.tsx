@@ -188,14 +188,14 @@ function SlidingDoor({
 // ── External Drawer (below doors in hinge closets) ──────────
 
 function ExternalDrawerBlock({
-  xPx, wPx, totalHeight, color,
+  xPx, yPx, wPx, totalHeight, color,
 }: {
-  xPx: number; wPx: number; totalHeight: number; color: string
+  xPx: number; yPx: number; wPx: number; totalHeight: number; color: string
 }) {
   const hPx = cmToPx(totalHeight)
 
   return (
-    <Group>
+    <Group y={yPx}>
       <Rect x={xPx} y={0} width={wPx} height={hPx}
         fill={color} stroke="rgba(195,180,158,0.5)" strokeWidth={1} cornerRadius={2} />
       <Rect x={xPx + 4} y={3} width={wPx - 8} height={hPx - 6}
@@ -267,9 +267,13 @@ export default function ExternalView({ closet }: Props) {
             const secEndXcm = doorPositions[lastDoorIdx].xCm + doorPositions[lastDoorIdx].widthCm
             const secWpx = cmToPx(secEndXcm + WALL_THICKNESS) - secXpx
 
+            // External drawers sit at the bottom of the closet, just above the bottom wall
+            const drawerYpx = cmToPx(closet.dimensions.height - WALL_THICKNESS) - cmToPx(externalDrawerTotalH)
+
             externalDrawerNode = (
               <ExternalDrawerBlock
                 xPx={secXpx}
+                yPx={drawerYpx}
                 wPx={secWpx}
                 totalHeight={externalDrawerTotalH}
                 color={closet.frontMaterial.color}

@@ -96,7 +96,7 @@ export function DimensionLines({ width, height }: { width: number; height: numbe
   )
 }
 
-// ── Height Ruler (right side) ───────────────────────────────
+// ── Height Ruler (right side, 0 at bottom) ──────────────────
 
 export function HeightRuler({ height, wardrobeWidth }: { height: number; wardrobeWidth: number }) {
   const wPx = cmToPx(wardrobeWidth)
@@ -111,6 +111,7 @@ export function HeightRuler({ height, wardrobeWidth }: { height: number; wardrob
 
   for (let y = 0; y <= height; y += step) {
     const yPx = cmToPx(y)
+    const labelCm = height - y // 0 at bottom, height at top
     const isMajor = y % (step * 2) === 0 || y === 0 || y === height
     els.push(
       <Line key={`rt${y}`}
@@ -120,13 +121,89 @@ export function HeightRuler({ height, wardrobeWidth }: { height: number; wardrob
     )
     if (isMajor) {
       els.push(
-        <Text key={`rl${y}`} text={`${y}`}
+        <Text key={`rl${y}`} text={`${labelCm}`}
           x={wPx + 28} y={yPx - 5}
           fontSize={10} fill="#93c5fd" fontStyle="bold" />,
       )
     }
   }
   return <>{els}</>
+}
+
+// ── Human Figure (height reference, right of closet) ────────
+
+export function HumanFigure({ height, wardrobeWidth }: { height: number; wardrobeWidth: number }) {
+  const wPx = cmToPx(wardrobeWidth)
+  const hPx = cmToPx(height)
+  const figureX = wPx + 70 // right of ruler
+
+  function renderFigure(heightCm: number, xOffset: number) {
+    const figH = cmToPx(heightCm)
+    const footY = hPx // bottom of closet = floor
+    const topY = footY - figH
+    const headR = figH * 0.065
+    const headCy = topY + headR
+    const neckY = headCy + headR
+    const shoulderY = neckY + figH * 0.04
+    const shoulderW = figH * 0.15
+    const waistY = shoulderY + figH * 0.28
+    const hipY = waistY + figH * 0.06
+    const kneeY = hipY + figH * 0.22
+    const cx = figureX + xOffset
+
+    const col = 'rgba(147,197,253,0.35)'
+    const colLabel = 'rgba(147,197,253,0.55)'
+
+    return (
+      <Group key={`fig-${heightCm}`} listening={false}>
+        {/* Head */}
+        <Line points={[
+          cx, headCy - headR,
+          cx + headR * 0.7, headCy - headR * 0.3,
+          cx + headR * 0.7, headCy + headR * 0.3,
+          cx, headCy + headR,
+          cx - headR * 0.7, headCy + headR * 0.3,
+          cx - headR * 0.7, headCy - headR * 0.3,
+        ]} closed fill={col} />
+
+        {/* Neck */}
+        <Line points={[cx, neckY, cx, shoulderY]} stroke={col} strokeWidth={1.5} />
+
+        {/* Shoulders + arms */}
+        <Line points={[cx - shoulderW, shoulderY, cx + shoulderW, shoulderY]}
+          stroke={col} strokeWidth={1.5} />
+        <Line points={[cx - shoulderW, shoulderY, cx - shoulderW * 0.85, waistY * 0.55 + shoulderY * 0.45]}
+          stroke={col} strokeWidth={1.2} />
+        <Line points={[cx + shoulderW, shoulderY, cx + shoulderW * 0.85, waistY * 0.55 + shoulderY * 0.45]}
+          stroke={col} strokeWidth={1.2} />
+
+        {/* Torso */}
+        <Line points={[cx, shoulderY, cx, hipY]} stroke={col} strokeWidth={1.5} />
+
+        {/* Legs */}
+        <Line points={[cx, hipY, cx - shoulderW * 0.5, kneeY, cx - shoulderW * 0.45, footY]}
+          stroke={col} strokeWidth={1.2} />
+        <Line points={[cx, hipY, cx + shoulderW * 0.5, kneeY, cx + shoulderW * 0.45, footY]}
+          stroke={col} strokeWidth={1.2} />
+
+        {/* Height label */}
+        <Text text={`${(heightCm / 100).toFixed(2)} מ׳`}
+          x={cx - 20} y={topY - 16}
+          fontSize={10} fill={colLabel} fontStyle="bold" />
+
+        {/* Horizontal guide line from figure top to closet */}
+        <Line points={[wPx + 12, footY - figH, cx - headR - 4, footY - figH]}
+          stroke="rgba(147,197,253,0.15)" strokeWidth={0.5} dash={[3, 3]} />
+      </Group>
+    )
+  }
+
+  return (
+    <Group listening={false}>
+      {renderFigure(160, 0)}
+      {renderFigure(180, 50)}
+    </Group>
+  )
 }
 
 // ── Section Divider (vertical wall between sections) ────────

@@ -42,14 +42,32 @@ function DimInput({
   label: string; value: number; min?: number; max?: number; step?: number
   onChange: (v: number) => void; disabled?: boolean
 }) {
+  const [localValue, setLocalValue] = useState<string>(String(value))
+  const [focused, setFocused] = useState(false)
+
+  // Sync from parent when not focused
+  const displayValue = focused ? localValue : String(value)
+
+  const commit = () => {
+    const n = Number(localValue)
+    if (!isNaN(n) && n >= min && n <= max) {
+      onChange(n)
+    } else {
+      setLocalValue(String(value)) // revert
+    }
+  }
+
   return (
     <label className="flex items-center justify-between gap-2">
       <span className="text-xs text-slate-400 w-14 shrink-0">{label}</span>
       <div className="flex items-center gap-1.5">
         <input
-          type="number" min={min} max={max} step={step} value={value}
+          type="number" min={min} max={max} step={step} value={displayValue}
           disabled={disabled}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onFocus={() => { setFocused(true); setLocalValue(String(value)) }}
+          onBlur={() => { setFocused(false); commit() }}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur() } }}
           className="w-16 px-2 py-1.5 text-xs rounded-lg text-slate-200 text-center
                      focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all
                      disabled:opacity-40 disabled:cursor-not-allowed"

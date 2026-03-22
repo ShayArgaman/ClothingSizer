@@ -25,7 +25,7 @@ import { validateCloset } from '../../utils/closetValidation'
 import type { ComponentTemplate, ElementKind } from '../../types/closet.types'
 import { WALL_THICKNESS } from '../../types/closet.types'
 
-import { GridLines, ClosetFrame, DimensionLines, HeightRuler } from './CanvasOverlays'
+import { GridLines, ClosetFrame, DimensionLines, HeightRuler, HumanFigure } from './CanvasOverlays'
 import InternalView from './InternalView'
 import ExternalView from './ExternalView'
 
@@ -268,6 +268,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
           <ClosetFrame width={closet.dimensions.width} height={closet.dimensions.height} />
           <DimensionLines width={closet.dimensions.width} height={closet.dimensions.height} />
           <HeightRuler height={closet.dimensions.height} wardrobeWidth={closet.dimensions.width} />
+          <HumanFigure height={closet.dimensions.height} wardrobeWidth={closet.dimensions.width} />
 
           {/* View-specific content */}
           {viewMode === 'internal' ? (

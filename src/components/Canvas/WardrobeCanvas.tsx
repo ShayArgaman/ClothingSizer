@@ -91,6 +91,7 @@ function HeightRuler({ height, wardrobeWidth }: { height: number; wardrobeWidth:
 
   for (let y = 0; y <= height; y += step) {
     const yPx = cmToPx(y)
+    const labelCm = height - y // 0 at bottom, height at top
     const isMajor = y % (step * 2) === 0 || y === 0 || y === height
     els.push(
       <Line key={`rt${y}`} points={[wPx + 12, yPx, wPx + (isMajor ? 24 : 18), yPx]}
@@ -98,7 +99,7 @@ function HeightRuler({ height, wardrobeWidth }: { height: number; wardrobeWidth:
     )
     if (isMajor) {
       els.push(
-        <Text key={`rl${y}`} text={`${y}`}
+        <Text key={`rl${y}`} text={`${labelCm}`}
           x={wPx + 28} y={yPx - 5}
           fontSize={10} fill="#93c5fd" fontStyle="bold" />
       )

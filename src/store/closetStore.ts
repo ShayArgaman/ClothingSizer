@@ -26,6 +26,7 @@ import type {
 import {
   DEFAULT_DEPTH,
   SHELF_THICKNESS,
+  WALL_THICKNESS,
 } from '../types/closet.types'
 
 import {
@@ -140,27 +141,41 @@ function rebuildDoorsAndSections(
   closetType: ClosetType,
   dimensions: ClosetDimensions,
   existingSections?: Section[],
-  existingDoorCount?: number,
-  singleDoorPlacement?: SingleDoorPlacement,
+  existingDoors?: DoorConfig,
 ): { doors: DoorConfig; sections: Section[] } {
   const innerWidth = getInnerWidth(dimensions)
   const validCounts = getValidDoorCounts(closetType, dimensions.width)
 
   // Keep existing count if still valid, otherwise pick default
-  let count = existingDoorCount ?? getDefaultDoorCount(closetType, dimensions.width)
+  let count = existingDoors?.count ?? getDefaultDoorCount(closetType, dimensions.width)
   if (!validCounts.includes(count)) {
     count = getDefaultDoorCount(closetType, dimensions.width)
   }
 
-  const widths = computeEqualDoorWidths(closetType, innerWidth, count)
+  // Preserve asymmetric widths: proportionally rescale if count matches
+  let widths: number[]
+  if (existingDoors && existingDoors.count === count) {
+    const oldSum = existingDoors.widths.reduce((a, b) => a + b, 0)
+    if (oldSum > 0 && oldSum !== innerWidth) {
+      // Proportionally scale
+      const scaled = existingDoors.widths.map(w => Math.round(w * innerWidth / oldSum))
+      const scaledSum = scaled.reduce((a, b) => a + b, 0)
+      scaled[scaled.length - 1] += innerWidth - scaledSum // absorb rounding
+      widths = clampDoorWidths(closetType, scaled, innerWidth)
+    } else {
+      widths = existingDoors.widths
+    }
+  } else {
+    widths = computeEqualDoorWidths(closetType, innerWidth, count)
+  }
 
   const doors: DoorConfig = {
     count,
     widths,
-    handleStyle: closetType === 'hinge' ? 'point' : 'point',
-    centerHandleDoorIndex: null,
-    strips: null,
-    singleDoorPlacement,
+    handleStyle: existingDoors?.handleStyle ?? 'point',
+    centerHandleDoorIndex: count !== existingDoors?.count ? null : (existingDoors?.centerHandleDoorIndex ?? null),
+    strips: existingDoors?.strips ?? null,
+    singleDoorPlacement: existingDoors?.singleDoorPlacement,
   }
 
   const sections = deriveSections(doors, dimensions, closetType, existingSections)
@@ -234,8 +249,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       }
 
       const { doors, sections } = rebuildDoorsAndSections(
-        type, dims, existingSections, undefined,
-        type === 'hinge' ? state.closet.doors.singleDoorPlacement : undefined,
+        type, dims, existingSections, state.closet.doors,
       )
 
       return {
@@ -252,16 +266,15 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
   setDimensions: (dims: Partial<ClosetDimensions>) =>
     set(state => {
       const newDims = { ...state.closet.dimensions }
-      if (dims.width !== undefined) newDims.width = dims.width
-      if (dims.height !== undefined) newDims.height = dims.height
+      if (dims.width !== undefined) newDims.width = Math.max(2 * WALL_THICKNESS + 30, dims.width)
+      if (dims.height !== undefined) newDims.height = Math.max(2 * WALL_THICKNESS + 30, dims.height)
       if (dims.depth !== undefined) newDims.depth = clampDepth(dims.depth)
 
       const { doors, sections } = rebuildDoorsAndSections(
         state.closet.closetType,
         newDims,
         state.closet.sections,
-        state.closet.doors.count,
-        state.closet.doors.singleDoorPlacement,
+        state.closet.doors,
       )
 
       return {
