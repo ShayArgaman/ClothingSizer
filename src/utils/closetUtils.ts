@@ -562,7 +562,7 @@ export function createElement(
         ...base,
         kind: 'servetto',
         height: 100,
-        clearanceAbove: 60,
+        clearanceAbove: 20,
       }
 
     case 'drawer-pair':

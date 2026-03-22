@@ -52,6 +52,8 @@ import { validateCloset } from '../utils/closetValidation'
 
 // ── Store Interface ─────────────────────────────────────────
 
+const MAX_HISTORY = 50
+
 export interface ClosetStore {
   // ── State ──
   closet: ClosetConfig
@@ -60,6 +62,14 @@ export interface ClosetStore {
   selectedElementId: string | null
   customer: CustomerDetails | null
   designId: string | null
+
+  // ── Undo / Redo ──
+  _past: ClosetConfig[]
+  _future: ClosetConfig[]
+  canUndo: boolean
+  canRedo: boolean
+  undo: () => void
+  redo: () => void
 
   // ── Customer & persistence ──
   setCustomer: (details: CustomerDetails) => void
@@ -210,13 +220,63 @@ function updateSectionElements(
 
 // ── Store ───────────────────────────────────────────────────
 
-export const useClosetStore = create<ClosetStore>((set, get) => ({
+export const useClosetStore = create<ClosetStore>((set, get) => {
+  // Helper: push a deep clone of current closet to history before a mutation
+  const pushHistory = () => {
+    const { closet, _past } = get()
+    const snapshot = structuredClone(closet)
+    const past = [..._past, snapshot]
+    if (past.length > MAX_HISTORY) past.shift()
+    return { _past: past, _future: [] as ClosetConfig[], canUndo: true, canRedo: false }
+  }
+
+  return {
   closet: createInitialCloset(),
   viewMode: 'internal',
   selectedSectionId: null,
   selectedElementId: null,
   customer: null,
   designId: null,
+  _past: [],
+  _future: [],
+  canUndo: false,
+  canRedo: false,
+
+  // ────────────────────────────────────────────────────────
+  // Undo / Redo
+  // ────────────────────────────────────────────────────────
+
+  undo: () =>
+    set(state => {
+      if (state._past.length === 0) return state
+      const past = [...state._past]
+      const prev = past.pop()!
+      const currentSnapshot = structuredClone(state.closet)
+      const future = [currentSnapshot, ...state._future]
+      return {
+        closet: structuredClone(prev),
+        _past: past,
+        _future: future,
+        canUndo: past.length > 0,
+        canRedo: true,
+      }
+    }),
+
+  redo: () =>
+    set(state => {
+      if (state._future.length === 0) return state
+      const future = [...state._future]
+      const next = future.shift()!
+      const currentSnapshot = structuredClone(state.closet)
+      const past = [...state._past, currentSnapshot]
+      return {
+        closet: structuredClone(next),
+        _past: past,
+        _future: future,
+        canUndo: true,
+        canRedo: future.length > 0,
+      }
+    }),
 
   // ────────────────────────────────────────────────────────
   // Customer & persistence
@@ -234,6 +294,10 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       selectedSectionId: null,
       selectedElementId: null,
       viewMode: 'internal',
+      _past: [],
+      _future: [],
+      canUndo: false,
+      canRedo: false,
     }),
 
   // ────────────────────────────────────────────────────────
@@ -242,6 +306,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   setClosetType: (type: ClosetType) =>
     set(state => {
+      const hist = pushHistory()
       const newDepth = getDefaultDepth(type)
       const dims = { ...state.closet.dimensions, depth: newDepth }
 
@@ -265,6 +330,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       )
 
       return {
+        ...hist,
         closet: {
           ...state.closet,
           closetType: type,
@@ -277,6 +343,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   setDimensions: (dims: Partial<ClosetDimensions>) =>
     set(state => {
+      const hist = pushHistory()
       const newDims = { ...state.closet.dimensions }
       if (dims.width !== undefined) newDims.width = Math.max(2 * WALL_THICKNESS + 30, dims.width)
       if (dims.height !== undefined) newDims.height = Math.max(2 * WALL_THICKNESS + 30, dims.height)
@@ -290,6 +357,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       )
 
       return {
+        ...hist,
         closet: {
           ...state.closet,
           dimensions: newDims,
@@ -301,16 +369,19 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   setBodyMaterial: (m: MaterialConfig) =>
     set(state => ({
+      ...pushHistory(),
       closet: { ...state.closet, bodyMaterial: m },
     })),
 
   setFrontMaterial: (m: MaterialConfig) =>
     set(state => ({
+      ...pushHistory(),
       closet: { ...state.closet, frontMaterial: m },
     })),
 
   setFrontFinish: (f: FrontFinish) =>
     set(state => ({
+      ...pushHistory(),
       closet: { ...state.closet, frontFinish: f },
     })),
 
@@ -320,6 +391,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   setDoorCount: (count: number) =>
     set(state => {
+      const hist = pushHistory()
       const innerWidth = getInnerWidth(state.closet.dimensions)
       const widths = computeEqualDoorWidths(
         state.closet.closetType, innerWidth, count,
@@ -349,12 +421,14 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       }
 
       return {
+        ...hist,
         closet: { ...state.closet, doors, sections },
       }
     }),
 
   setSingleDoorPlacement: (placement: SingleDoorPlacement) =>
     set(state => {
+      const hist = pushHistory()
       const doors: DoorConfig = { ...state.closet.doors, singleDoorPlacement: placement }
       const sections = deriveSections(
         doors, state.closet.dimensions, state.closet.closetType, state.closet.sections,
@@ -372,12 +446,14 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       }
 
       return {
+        ...hist,
         closet: { ...state.closet, doors, sections },
       }
     }),
 
   setHandleStyle: (style: HandleStyle) =>
     set(state => ({
+      ...pushHistory(),
       closet: {
         ...state.closet,
         doors: {
@@ -393,6 +469,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   setCenterHandleDoor: (index: number | null) =>
     set(state => ({
+      ...pushHistory(),
       closet: {
         ...state.closet,
         doors: { ...state.closet.doors, centerHandleDoorIndex: index },
@@ -401,6 +478,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   setStrips: (strips: StripConfig | null) =>
     set(state => ({
+      ...pushHistory(),
       closet: {
         ...state.closet,
         doors: { ...state.closet.doors, strips },
@@ -421,12 +499,19 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       const section = findSection(state.closet.sections, sectionId)
       if (!section) return state
 
+      const hist = pushHistory()
       const innerHeight = getInnerHeight(state.closet.dimensions)
 
-      // Default Y: bottom of section for drawers, above structural shelf for shelves
-      const defaultY = kind === 'shelf'
-        ? section.structuralShelfY + SHELF_THICKNESS + 10
-        : 0
+      // Default Y: near top for servetto/hanging-rail/shelf, bottom for drawers
+      let defaultY = 0
+      if (kind === 'shelf') {
+        defaultY = section.structuralShelfY + SHELF_THICKNESS + 10
+      } else if (kind === 'servetto') {
+        // Place servetto above structural shelf with room for its height
+        defaultY = section.structuralShelfY + SHELF_THICKNESS + 5
+      } else if (kind === 'hanging-rail') {
+        defaultY = section.structuralShelfY + SHELF_THICKNESS + 5
+      }
 
       // External drawers only allowed on hinge closets
       let placement = options?.placement ?? 'internal'
@@ -451,6 +536,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       )
 
       return {
+        ...hist,
         closet: updatedCloset,
         selectedSectionId: sectionId,
         selectedElementId: element.id,
@@ -459,6 +545,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   moveElement: (sectionId: string, elementId: string, newY: number) =>
     set(state => {
+      const hist = pushHistory()
       const innerHeight = getInnerHeight(state.closet.dimensions)
 
       const updatedCloset = updateSectionElements(
@@ -481,11 +568,12 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
         },
       )
 
-      return { closet: updatedCloset }
+      return { ...hist, closet: updatedCloset }
     }),
 
   removeElement: (sectionId: string, elementId: string) =>
     set(state => {
+      const hist = pushHistory()
       const innerHeight = getInnerHeight(state.closet.dimensions)
 
       const updatedCloset = updateSectionElements(
@@ -505,6 +593,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       )
 
       return {
+        ...hist,
         closet: updatedCloset,
         selectedElementId: state.selectedElementId === elementId ? null : state.selectedElementId,
       }
@@ -512,6 +601,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
 
   updateElement: (sectionId: string, elementId: string, patch: Partial<SectionElement>) =>
     set(state => {
+      const hist = pushHistory()
       const innerHeight = getInnerHeight(state.closet.dimensions)
 
       const updatedCloset = updateSectionElements(
@@ -531,11 +621,12 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
         },
       )
 
-      return { closet: updatedCloset }
+      return { ...hist, closet: updatedCloset }
     }),
 
   setStructuralShelfY: (sectionId: string, y: number) =>
     set(state => {
+      const hist = pushHistory()
       const innerHeight = getInnerHeight(state.closet.dimensions)
       const clampedY = Math.max(SHELF_THICKNESS, Math.min(y, innerHeight - SHELF_THICKNESS))
 
@@ -559,7 +650,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
         }),
       }
 
-      return { closet: updatedCloset }
+      return { ...hist, closet: updatedCloset }
     }),
 
   distributeShelvesEqually: (sectionId: string) =>
@@ -567,6 +658,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
       const section = findSection(state.closet.sections, sectionId)
       if (!section) return state
 
+      const hist = pushHistory()
       const innerHeight = getInnerHeight(state.closet.dimensions)
       const newElements = distributeShelvesEqually(section, innerHeight)
 
@@ -575,7 +667,7 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
         () => newElements,
       )
 
-      return { closet: updatedCloset }
+      return { ...hist, closet: updatedCloset }
     }),
 
   // ────────────────────────────────────────────────────────
@@ -591,11 +683,12 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
     set({ selectedSectionId: sectionId, selectedElementId: elementId }),
 
   clearAll: () =>
-    set({
+    set(state => ({
+      ...pushHistory(),
       closet: createInitialCloset(),
       selectedSectionId: null,
       selectedElementId: null,
-    }),
+    })),
 
   // ────────────────────────────────────────────────────────
   // Computed
@@ -616,4 +709,4 @@ export const useClosetStore = create<ClosetStore>((set, get) => ({
     if (!section) return getInnerHeight(closet.dimensions)
     return computeDoorHeightForSection(section, getInnerHeight(closet.dimensions))
   },
-}))
+}})

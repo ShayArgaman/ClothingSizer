@@ -447,32 +447,33 @@ function validateServettoConstraints(
   if (el.kind !== 'servetto') return
   const servetto = el as ServettoElement
 
-  // Clearance above: no elements allowed between servetto top
-  // and (servetto top + clearanceAbove), up to ceiling
   const clearanceStart = servetto.y + servetto.height
+  const availableClearance = innerHeight - clearanceStart
+
+  // Ceiling clearance: only warn (not error) — servetto naturally sits near top
+  if (availableClearance < servetto.clearanceAbove && availableClearance < 10) {
+    errors.push({
+      sectionId: section.id,
+      elementId: el.id,
+      code: 'SERVETTO_INSUFFICIENT_CEILING',
+      message: `${sectionLabel}: סרווטו קרוב מדי לתקרה (${Math.round(availableClearance)} ס״מ חלל)`,
+      severity: 'warning',
+    })
+  }
+
+  // Check for blocking elements within the clearance zone — but
+  // exclude structural shelves (servetto commonly sits just below one)
   const clearanceCeiling = Math.min(
     clearanceStart + servetto.clearanceAbove,
     innerHeight,
   )
 
-  // Check available clearance vs required clearance
-  const availableClearance = innerHeight - clearanceStart
-  if (availableClearance < servetto.clearanceAbove) {
-    errors.push({
-      sectionId: section.id,
-      elementId: el.id,
-      code: 'SERVETTO_INSUFFICIENT_CEILING',
-      message: `${sectionLabel}: סרווטו דורש ${servetto.clearanceAbove} ס״מ חלל מעליו, אך נותרו רק ${Math.round(availableClearance)} ס״מ עד התקרה`,
-      severity: 'error',
-    })
-  }
-
-  // Check for blocking elements within the clearance zone
   const blockers = section.elements.filter(other => {
     if (other.id === el.id) return false
+    // Structural shelf above is expected, not a blocker
+    if (other.kind === 'shelf' && (other as ShelfElement).isStructural) return false
     const otherBottom = other.y
     const otherTop = other.y + other.height
-    // Element overlaps the clearance zone
     return otherBottom < clearanceCeiling && otherTop > clearanceStart
   })
 
@@ -481,18 +482,18 @@ function validateServettoConstraints(
       sectionId: section.id,
       elementId: el.id,
       code: 'SERVETTO_CLEARANCE_BLOCKED',
-      message: `${sectionLabel}: סרווטו דורש ${servetto.clearanceAbove} ס״מ חלל פנוי מעליו — אלמנט חוסם בגובה ${Math.round(blocker.y)} ס״מ`,
-      severity: 'error',
+      message: `${sectionLabel}: אלמנט חוסם את חלל הסרווטו בגובה ${Math.round(blocker.y)} ס״מ`,
+      severity: 'warning',
     })
   }
 
   // Servetto only makes sense in tall closets (advisory)
-  if (innerHeight < 200) {
+  if (innerHeight < 180) {
     errors.push({
       sectionId: section.id,
       elementId: el.id,
       code: 'SERVETTO_LOW_CLOSET',
-      message: `${sectionLabel}: סרווטו מיועד בעיקר לארונות גבוהים (מעל 200 ס״מ)`,
+      message: `${sectionLabel}: סרווטו מיועד בעיקר לארונות גבוהים (מעל 180 ס״מ)`,
       severity: 'warning',
     })
   }
@@ -506,12 +507,17 @@ function validateOverlaps(
   errors: ValidationError[],
 ): void {
   const sorted = [...section.elements].sort((a, b) => a.y - b.y)
-  const TOLERANCE = 0.5 // cm — ignore sub-millimeter overlaps
+  const BASE_TOLERANCE = 0.5 // cm — ignore sub-millimeter overlaps
 
   for (let i = 0; i < sorted.length - 1; i++) {
     const curr = sorted[i]
     const next = sorted[i + 1]
     const overlap = curr.y + curr.height - next.y
+
+    // Relax tolerance when servetto or hanging-rail touches a shelf
+    const involvesTallElement = curr.kind === 'servetto' || curr.kind === 'hanging-rail'
+      || next.kind === 'servetto' || next.kind === 'hanging-rail'
+    const TOLERANCE = involvesTallElement ? 3 : BASE_TOLERANCE
 
     if (overlap > TOLERANCE) {
       errors.push({

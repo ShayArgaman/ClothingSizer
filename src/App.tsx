@@ -23,6 +23,7 @@ export default function App() {
   const {
     closet, customer, designId,
     clearAll, addElement, setCustomer, setDesignId, loadFromConfig,
+    undo, redo, canUndo, canRedo,
   } = useClosetStore()
 
   const canvasRef = useRef<ClosetCanvasHandle>(null)
@@ -36,6 +37,22 @@ export default function App() {
 
   const totalElements = closet.sections.reduce((sum, s) => sum + s.elements.length, 0)
   const userElements = totalElements - closet.sections.length
+
+  // ── Keyboard shortcuts for undo/redo ──
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) { redo() } else { undo() }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault()
+        redo()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [undo, redo])
 
   // ── Toast helper ──
   const showToast = (msg: string) => {
@@ -225,6 +242,28 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Undo / Redo */}
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            title="חזור (Ctrl+Z)"
+            className="text-[11px] px-2 py-1.5 rounded-lg transition-all min-h-[36px] disabled:opacity-30"
+            style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
+          >
+            ↶ חזור
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            title="קדימה (Ctrl+Shift+Z)"
+            className="text-[11px] px-2 py-1.5 rounded-lg transition-all min-h-[36px] disabled:opacity-30"
+            style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
+          >
+            ↷ קדימה
+          </button>
+
+          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
+
           {/* Search / Load */}
           {supabase && (
             <button
