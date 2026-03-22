@@ -167,7 +167,10 @@ export default function PropertiesPanel() {
   const innerWidth = getInnerWidth(closet.dimensions)
   const doorWidth = closet.doors.count > 0 ? Math.round(innerWidth / closet.doors.count) : innerWidth
 
-  if (collapsed) {
+  // Detect if parent is a mobile bottom sheet
+  const isMobileSheet = typeof window !== 'undefined' && window.innerWidth < 768
+
+  if (!isMobileSheet && collapsed) {
     return (
       <aside
         className="w-10 flex flex-col shrink-0 items-center pt-4 cursor-pointer"
@@ -182,22 +185,8 @@ export default function PropertiesPanel() {
     )
   }
 
-  return (
-    <aside
-      className="w-56 flex flex-col shrink-0 transition-all duration-200"
-      style={{ background: '#111827', borderRight: '1px solid #1e2d40' }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #1e2d40' }}>
-        <h2 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">מאפיינים</h2>
-        <button onClick={() => setCollapsed(true)}
-          className="text-slate-600 hover:text-slate-400 text-xs w-6 h-6 flex items-center justify-center rounded transition-colors">
-          ◀
-        </button>
-      </div>
-
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
+  const content = (
+    <div className={isMobileSheet ? '' : 'flex-1 overflow-y-auto'}>
 
         {/* ── Closet Type ── */}
         <PanelSection title="סוג ארון">
@@ -504,26 +493,45 @@ export default function PropertiesPanel() {
             </div>
           )}
         </section>
-      </div>
 
-      {/* ── Validation Summary ── */}
-      {errors.length > 0 && (
-        <div
-          className="px-4 py-3 shrink-0"
-          style={{ borderTop: '1px solid #1e2d40' }}
-        >
-          <div className="px-2.5 py-2 rounded-lg text-[10px]"
-            style={{
-              background: errorCounts.errors > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(250,204,21,0.06)',
-              border: `1px solid ${errorCounts.errors > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(250,204,21,0.15)'}`,
-              color: errorCounts.errors > 0 ? '#fca5a5' : '#fde68a',
-            }}>
-            {errorCounts.errors > 0 && <span>{errorCounts.errors} שגיאות</span>}
-            {errorCounts.errors > 0 && errorCounts.warnings > 0 && <span> · </span>}
-            {errorCounts.warnings > 0 && <span>{errorCounts.warnings} אזהרות</span>}
+        {/* ── Validation Summary ── */}
+        {errors.length > 0 && (
+          <div
+            className="px-4 py-3 shrink-0"
+            style={{ borderTop: '1px solid #1e2d40' }}
+          >
+            <div className="px-2.5 py-2 rounded-lg text-[10px]"
+              style={{
+                background: errorCounts.errors > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(250,204,21,0.06)',
+                border: `1px solid ${errorCounts.errors > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(250,204,21,0.15)'}`,
+                color: errorCounts.errors > 0 ? '#fca5a5' : '#fde68a',
+              }}>
+              {errorCounts.errors > 0 && <span>{errorCounts.errors} שגיאות</span>}
+              {errorCounts.errors > 0 && errorCounts.warnings > 0 && <span> · </span>}
+              {errorCounts.warnings > 0 && <span>{errorCounts.warnings} אזהרות</span>}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+    </div>
+  )
+
+  // Mobile: render content directly (no aside wrapper)
+  if (isMobileSheet) return content
+
+  return (
+    <aside
+      className="w-56 flex flex-col shrink-0 transition-all duration-200"
+      style={{ background: '#111827', borderRight: '1px solid #1e2d40' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #1e2d40' }}>
+        <h2 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">מאפיינים</h2>
+        <button onClick={() => setCollapsed(true)}
+          className="text-slate-600 hover:text-slate-400 text-xs w-8 h-8 flex items-center justify-center rounded-lg transition-colors min-h-[44px]">
+          ◀
+        </button>
+      </div>
+      {content}
     </aside>
   )
 }

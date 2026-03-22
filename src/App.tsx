@@ -18,6 +18,21 @@ interface GhostState {
 }
 
 type PendingAction = 'save' | 'export' | null
+type MobilePanel = null | 'properties' | 'components'
+
+// ── Breakpoint hook ──
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return mobile
+}
 
 export default function App() {
   const {
@@ -34,7 +49,9 @@ export default function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null)
 
+  const isMobile = useIsMobile()
   const totalElements = closet.sections.reduce((sum, s) => sum + s.elements.length, 0)
   const userElements = totalElements - closet.sections.length
 
@@ -90,7 +107,6 @@ export default function App() {
         } else {
           const newId = await saveDesign(cust, closet)
           setDesignId(newId)
-          // Update URL without reload
           const url = new URL(window.location.href)
           url.searchParams.set('design', newId)
           window.history.replaceState({}, '', url.toString())
@@ -149,7 +165,6 @@ export default function App() {
       rec.id,
     )
     setShowSearchModal(false)
-    // Update URL
     const url = new URL(window.location.href)
     url.searchParams.set('design', rec.id)
     window.history.replaceState({}, '', url.toString())
@@ -203,16 +218,22 @@ export default function App() {
     return () => document.removeEventListener('touchmove', prevent)
   }, [!!ghost])
 
+  // Close mobile panel when switching to desktop
+  useEffect(() => {
+    if (!isMobile) setMobilePanel(null)
+  }, [isMobile])
+
   return (
-    <div className="h-screen flex flex-col select-none" dir="rtl">
+    <div className="h-screen flex flex-col select-none overflow-hidden" dir="rtl">
+      {/* ═══ HEADER ═══ */}
       <header
-        className="h-12 shrink-0 flex items-center justify-between px-4 md:px-6"
+        className="h-12 shrink-0 flex items-center justify-between px-3 md:px-6"
         style={{
           background: 'linear-gradient(90deg, #0f1623 0%, #131e2e 50%, #0f1623 100%)',
           borderBottom: '1px solid #1e2d40',
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0"
             style={{
@@ -222,44 +243,44 @@ export default function App() {
           >
             🪵
           </div>
-          <span className="text-sm font-semibold text-slate-100 tracking-wide">מעצב הארון</span>
-          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
-          <span className="text-[11px] text-slate-500 font-light hidden sm:block">
+          <span className="text-sm font-semibold text-slate-100 tracking-wide hidden sm:block">מעצב הארון</span>
+          <div className="h-4 w-px bg-slate-700 hidden md:block" />
+          <span className="text-[11px] text-slate-500 font-light hidden md:block">
             {closet.dimensions.width} × {closet.dimensions.height} × {closet.dimensions.depth} ס״מ
           </span>
-          <div className="h-4 w-px bg-slate-700 hidden sm:block" />
-          <span className="text-[11px] text-slate-500 font-light hidden sm:block">
+          <div className="h-4 w-px bg-slate-700 hidden lg:block" />
+          <span className="text-[11px] text-slate-500 font-light hidden lg:block">
             {closet.closetType === 'hinge' ? 'צירים' : 'הזזה'} · {closet.doors.count} דלתות
           </span>
           {customer && (
             <>
-              <div className="h-4 w-px bg-slate-700 hidden sm:block" />
-              <span className="text-[11px] text-slate-400 font-light hidden sm:block">
+              <div className="h-4 w-px bg-slate-700 hidden lg:block" />
+              <span className="text-[11px] text-slate-400 font-light hidden lg:block">
                 {customer.name}
               </span>
             </>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2">
           {/* Undo / Redo */}
           <button
             onClick={undo}
             disabled={!canUndo}
             title="חזור (Ctrl+Z)"
-            className="text-[11px] px-2 py-1.5 rounded-lg transition-all min-h-[36px] disabled:opacity-30"
+            className="text-[11px] px-2 py-1.5 rounded-lg transition-all min-h-[44px] min-w-[44px] disabled:opacity-30"
             style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
           >
-            ↶ חזור
+            ↶ <span className="hidden sm:inline">חזור</span>
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
             title="קדימה (Ctrl+Shift+Z)"
-            className="text-[11px] px-2 py-1.5 rounded-lg transition-all min-h-[36px] disabled:opacity-30"
+            className="text-[11px] px-2 py-1.5 rounded-lg transition-all min-h-[44px] min-w-[44px] disabled:opacity-30"
             style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
           >
-            ↷ קדימה
+            ↷ <span className="hidden sm:inline">קדימה</span>
           </button>
 
           <div className="h-4 w-px bg-slate-700 hidden sm:block" />
@@ -268,7 +289,7 @@ export default function App() {
           {supabase && (
             <button
               onClick={() => setShowSearchModal(true)}
-              className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[36px] hidden sm:block"
+              className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[44px] hidden sm:block"
               style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
             >
               טען עיצוב
@@ -280,32 +301,32 @@ export default function App() {
             <button
               onClick={() => handleAction('save')}
               disabled={saving}
-              className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[36px] disabled:opacity-50"
+              className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[44px] disabled:opacity-50"
               style={{ background: '#1e3a5f', border: '1px solid #3b82f6', color: '#93c5fd' }}
             >
-              {saving ? 'שומר...' : designId ? 'עדכן' : 'שמור'}
+              {saving ? '...' : designId ? 'עדכן' : 'שמור'}
             </button>
           )}
 
           {/* Export PDF */}
           <button
             onClick={() => handleAction('export')}
-            className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[36px]"
+            className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[44px]"
             style={{ background: '#1a3a2f', border: '1px solid #22c55e55', color: '#86efac' }}
           >
-            ייצוא PDF
+            PDF
           </button>
 
           {userElements > 0 && (
             <>
-              <span className="text-[11px] text-slate-500 hidden sm:block">
+              <span className="text-[11px] text-slate-500 hidden lg:block">
                 {userElements} {userElements === 1 ? 'רכיב' : 'רכיבים'}
               </span>
               <button
                 onClick={clearAll}
-                className="text-[11px] text-red-400/80 hover:text-red-300 px-3 py-1.5 rounded-lg
+                className="text-[11px] text-red-400/80 hover:text-red-300 px-2 py-1.5 rounded-lg
                            border border-red-900/40 hover:border-red-800/60 hover:bg-red-950/30
-                           transition-all min-h-[44px]"
+                           transition-all min-h-[44px] hidden sm:block"
               >
                 נקה הכל
               </button>
@@ -314,13 +335,100 @@ export default function App() {
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0">
-        <PropertiesPanel />
-        <div className="flex-1 flex flex-col min-w-0">
+      {/* ═══ MAIN CONTENT ═══ */}
+      <div className="flex flex-1 min-h-0 relative">
+        {/* Desktop sidebars */}
+        {!isMobile && <PropertiesPanel />}
+
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           <ClosetCanvas ref={canvasRef} />
         </div>
-        <ComponentsPanel onAdd={handleAddFromPanel} onTouchDragStart={handleTouchDragStart} />
+
+        {!isMobile && <ComponentsPanel onAdd={handleAddFromPanel} onTouchDragStart={handleTouchDragStart} />}
       </div>
+
+      {/* ═══ MOBILE BOTTOM TAB BAR ═══ */}
+      {isMobile && (
+        <div
+          className="shrink-0 flex items-stretch"
+          style={{
+            background: '#111827',
+            borderTop: '1px solid #1e2d40',
+          }}
+        >
+          <button
+            onClick={() => setMobilePanel(mobilePanel === 'properties' ? null : 'properties')}
+            className="flex-1 py-3 text-[12px] font-medium transition-all min-h-[48px]"
+            style={{
+              background: mobilePanel === 'properties' ? '#1e3a5f' : 'transparent',
+              color: mobilePanel === 'properties' ? '#93c5fd' : '#94a3b8',
+              borderLeft: '1px solid #1e2d40',
+            }}
+          >
+            מאפיינים
+          </button>
+          <button
+            onClick={() => setMobilePanel(mobilePanel === 'components' ? null : 'components')}
+            className="flex-1 py-3 text-[12px] font-medium transition-all min-h-[48px]"
+            style={{
+              background: mobilePanel === 'components' ? '#1e3a5f' : 'transparent',
+              color: mobilePanel === 'components' ? '#93c5fd' : '#94a3b8',
+            }}
+          >
+            רכיבים
+          </button>
+          {supabase && (
+            <button
+              onClick={() => setShowSearchModal(true)}
+              className="flex-1 py-3 text-[12px] font-medium transition-all min-h-[48px]"
+              style={{ background: 'transparent', color: '#94a3b8', borderRight: '1px solid #1e2d40' }}
+            >
+              טען
+            </button>
+          )}
+          {userElements > 0 && (
+            <button
+              onClick={clearAll}
+              className="px-4 py-3 text-[12px] font-medium transition-all min-h-[48px]"
+              style={{ background: 'transparent', color: '#f87171aa', borderRight: '1px solid #1e2d40' }}
+            >
+              נקה
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ═══ MOBILE BOTTOM SHEET ═══ */}
+      {isMobile && mobilePanel && (
+        <div
+          className="fixed inset-x-0 bottom-[48px] z-40 overflow-y-auto"
+          style={{
+            maxHeight: '55vh',
+            background: '#111827',
+            borderTop: '1px solid #1e2d40',
+            boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
+          }}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center py-2">
+            <div className="w-10 h-1 rounded-full bg-slate-600" />
+          </div>
+
+          {mobilePanel === 'properties' && <PropertiesPanel />}
+          {mobilePanel === 'components' && (
+            <ComponentsPanel onAdd={handleAddFromPanel} onTouchDragStart={handleTouchDragStart} />
+          )}
+        </div>
+      )}
+
+      {/* Backdrop to close mobile sheet */}
+      {isMobile && mobilePanel && (
+        <div
+          className="fixed inset-0 z-30"
+          style={{ background: 'rgba(0,0,0,0.3)' }}
+          onClick={() => setMobilePanel(null)}
+        />
+      )}
 
       {/* Touch drag ghost */}
       {ghost && (
@@ -367,7 +475,7 @@ export default function App() {
       {/* Toast */}
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-2xl"
+          className="fixed bottom-16 md:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-2xl"
           style={{
             background: '#1e3a5f',
             border: '1px solid #3b82f6',

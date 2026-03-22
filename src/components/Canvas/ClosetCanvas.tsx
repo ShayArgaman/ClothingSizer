@@ -1,20 +1,9 @@
 // ============================================================
 // ClosetCanvas — Main Konva Stage for the Closet Configurator.
 //
-// Responsibilities:
-//  - Konva Stage + Layer with responsive sizing
-//  - View toggle: Internal ↔ External (separate render trees)
-//  - Drop handling (HTML5 drag + touch via imperative handle)
-//  - Deselection on empty-area click
-//  - Delegates to InternalView / ExternalView
-//
-// Drag-and-drop flow:
-//  1. ComponentsPanel starts a drag (HTML5 or pointer-based)
-//  2. ClosetCanvas receives drop coordinates (client px)
-//  3. Converts to cm, finds which section the drop landed in
-//  4. Calls store.addElement(sectionId, kind, yCm)
-//  5. Store auto-runs enforceDrawerRules if needed
-//  6. InternalView re-renders with the new element
+// Fully responsive: uses ResizeObserver + auto-scale so the
+// closet always fits within the visible container, scaling down
+// gracefully on mobile/tablet while staying centered.
 // ============================================================
 
 import { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle, useCallback } from 'react'
@@ -82,15 +71,38 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
     return () => obs.disconnect()
   }, [])
 
-  // ── Layer positioning (center the closet in the container) ──
-  const { layerX, layerY } = useMemo(() => {
+  // ── Auto-scale: fit the closet within the container ──
+  //
+  // Layer has scaleX/scaleY = s.  Layer x/y are in *stage* (screen) pixels.
+  // Children draw in unscaled coords; Konva multiplies by scale.
+  // So a child at (LEFT_PAD, TOP_PAD) appears at (layerX + LEFT_PAD*s, layerY + TOP_PAD*s) on screen.
+  // We want the total bounding box centered in the container.
+  const { layerX, layerY, scale } = useMemo(() => {
     const wPx = cmToPx(closet.dimensions.width)
     const hPx = cmToPx(closet.dimensions.height)
     const totalW = wPx + LEFT_PAD + RIGHT_PAD
     const totalH = hPx + TOP_PAD + BOTTOM_PAD
+
+    // Scale down if closet doesn't fit; never scale up beyond 1
+    const scaleX = containerSize.width / totalW
+    const scaleY = containerSize.height / totalH
+    const s = Math.min(scaleX, scaleY, 1)
+
+    // The layer's children span 0..totalW in unscaled coords.
+    // On screen that becomes 0..totalW*s.
+    // To center: offset = (container - totalW*s) / 2
+    const offsetX = Math.max(0, (containerSize.width - totalW * s) / 2)
+    const offsetY = Math.max(0, (containerSize.height - totalH * s) / 2)
+
+    // Layer x/y is in stage (screen) pixels.
+    // Children draw at unscaled coords; the closet frame starts at (0,0).
+    // The LEFT_PAD/TOP_PAD give space for dimension lines/rulers.
+    // On screen: child(0,0) → (layerX + 0*s, layerY + 0*s) = (layerX, layerY).
+    // We want LEFT_PAD*s px of padding on the left before the closet.
     return {
-      layerX: Math.max(LEFT_PAD, Math.round((containerSize.width - totalW) / 2) + LEFT_PAD),
-      layerY: Math.max(TOP_PAD, Math.round((containerSize.height - totalH) / 2) + TOP_PAD),
+      layerX: offsetX + LEFT_PAD * s,
+      layerY: offsetY + TOP_PAD * s,
+      scale: s,
     }
   }, [closet.dimensions.width, closet.dimensions.height, containerSize])
 
@@ -115,17 +127,23 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
     return best
   }, [closet.sections])
 
-  // ── Convert client coords → cm coords ──
+  // ── Convert client coords → cm coords (accounts for scale) ──
   const clientToCm = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect) return null
     if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
       return null
     }
-    const xCm = Math.max(0, Math.round((clientX - rect.left - layerX) / PX_PER_CM / GRID_CM) * GRID_CM)
-    const yCm = Math.max(0, Math.round((clientY - rect.top - layerY) / PX_PER_CM / GRID_CM) * GRID_CM)
+    // Stage coords = client - rect offset (since Stage fills the container 1:1)
+    // Unscaled coords = (stageCoord - layerPos) / scale
+    const stageX = clientX - rect.left
+    const stageY = clientY - rect.top
+    const unscaledX = (stageX - layerX) / scale
+    const unscaledY = (stageY - layerY) / scale
+    const xCm = Math.max(0, Math.round(unscaledX / PX_PER_CM / GRID_CM) * GRID_CM)
+    const yCm = Math.max(0, Math.round(unscaledY / PX_PER_CM / GRID_CM) * GRID_CM)
     return { xCm, yCm }
-  }, [layerX, layerY])
+  }, [layerX, layerY, scale])
 
   // ── Drop handler (shared by HTML5 and touch) ──
   const handleDropAt = useCallback((kind: ElementKind, xCm: number, yCm: number) => {
@@ -136,7 +154,6 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
 
     // Auto-distribute shelves when a new shelf is added
     if (kind === 'shelf') {
-      // Small delay so the element is added first
       setTimeout(() => distributeInSection(section.id), 0)
     }
   }, [findSectionAtX, addElement, distributeInSection])
@@ -172,13 +189,15 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
       if (!stageRef.current) return null
       const originalMode = viewMode
 
-      // Crop bounds: closet area only (layer offset + closet pixel size + small margin)
-      const pad = 8
-      const cropX = layerX - pad
-      const cropY = layerY - pad
-      const cropW = cmToPx(closet.dimensions.width) + pad * 2
-      const cropH = cmToPx(closet.dimensions.height) + pad * 2
-      const captureOpts = { pixelRatio: 2, x: cropX, y: cropY, width: cropW, height: cropH }
+      // Crop bounds in stage (screen) pixels
+      // The closet frame starts at unscaled (0,0) → stage (layerX, layerY)
+      const padPx = 8
+      const cropX = layerX - padPx
+      const cropY = layerY - padPx
+      const cropW = cmToPx(closet.dimensions.width) * scale + padPx * 2
+      const cropH = cmToPx(closet.dimensions.height) * scale + padPx * 2
+      // Increase pixelRatio to compensate for scale so the output resolution stays high
+      const captureOpts = { pixelRatio: 2 / scale, x: cropX, y: cropY, width: cropW, height: cropH }
 
       // Capture current view first
       const currentUrl = stageRef.current.toDataURL(captureOpts)
@@ -199,7 +218,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
         external: originalMode === 'external' ? currentUrl : otherUrl,
       }
     },
-  }), [clientToCm, handleDropAt, viewMode, setViewMode, layerX, layerY, closet.dimensions])
+  }), [clientToCm, handleDropAt, viewMode, setViewMode, layerX, layerY, scale, closet.dimensions])
 
   // ── Element interaction callbacks ──
   const handleSelectElement = useCallback(
@@ -231,7 +250,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-hidden relative"
+      className="flex-1 overflow-hidden relative w-full h-full"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       style={{
@@ -244,7 +263,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
         style={{ border: '1px solid #1e2d40', background: '#0d1520' }}>
         <button
           onClick={() => setViewMode('internal')}
-          className="px-3 py-1.5 text-xs font-medium transition-all min-h-[36px]"
+          className="px-3 py-1.5 text-xs font-medium transition-all min-h-[44px] min-w-[44px]"
           style={{
             background: viewMode === 'internal' ? '#1e3a5f' : 'transparent',
             color: viewMode === 'internal' ? '#93c5fd' : '#64748b',
@@ -255,7 +274,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
         </button>
         <button
           onClick={() => setViewMode('external')}
-          className="px-3 py-1.5 text-xs font-medium transition-all min-h-[36px]"
+          className="px-3 py-1.5 text-xs font-medium transition-all min-h-[44px] min-w-[44px]"
           style={{
             background: viewMode === 'external' ? '#1e3a5f' : 'transparent',
             color: viewMode === 'external' ? '#93c5fd' : '#64748b',
@@ -302,7 +321,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
           }
         }}
       >
-        <Layer x={layerX} y={layerY}>
+        <Layer x={layerX} y={layerY} scaleX={scale} scaleY={scale}>
           {/* Shared overlays */}
           <GridLines w={closet.dimensions.width} h={closet.dimensions.height} />
           <ClosetFrame width={closet.dimensions.width} height={closet.dimensions.height} bodyColor={closet.bodyMaterial.color} />
@@ -332,7 +351,7 @@ const ClosetCanvas = forwardRef<ClosetCanvasHandle>(function ClosetCanvas(_props
           <div className="text-center space-y-2">
             <div className="text-5xl opacity-15">🪵</div>
             <div className="text-sm text-slate-600 font-light">
-              {isTouch ? 'גרור רכיב מהתפריט לכאן' : 'גרור רכיב מהתפריט הימני'}
+              {isTouch ? 'לחץ על רכיב בתפריט להוספה' : 'גרור רכיב מהתפריט הימני'}
             </div>
             <div className="text-[11px] text-slate-700">או לחץ על רכיב להוספה מיידית</div>
           </div>
