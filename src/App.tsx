@@ -286,16 +286,14 @@ export default function App() {
           <div className="h-4 w-px bg-slate-700 hidden sm:block" />
 
           {/* Search / Load */}
-          {supabase && (
-            <button
-              onClick={() => setShowSearchModal(true)}
-              className="text-[11px] px-2 sm:px-3 py-1.5 rounded-lg transition-all min-h-[44px]"
-              style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
-            >
-              <span className="sm:hidden">טען</span>
-              <span className="hidden sm:inline">טען עיצוב</span>
-            </button>
-          )}
+          <button
+            onClick={() => supabase ? setShowSearchModal(true) : showToast('חיבור למסד נתונים לא זמין')}
+            className="text-[11px] px-2 sm:px-3 py-1.5 rounded-lg transition-all min-h-[44px]"
+            style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
+          >
+            <span className="sm:hidden">טען</span>
+            <span className="hidden sm:inline">טען עיצוב</span>
+          </button>
 
           {/* Save */}
           {supabase && (
