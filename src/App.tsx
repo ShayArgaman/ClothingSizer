@@ -289,10 +289,11 @@ export default function App() {
           {supabase && (
             <button
               onClick={() => setShowSearchModal(true)}
-              className="text-[11px] px-3 py-1.5 rounded-lg transition-all min-h-[44px] hidden sm:block"
+              className="text-[11px] px-2 sm:px-3 py-1.5 rounded-lg transition-all min-h-[44px]"
               style={{ background: '#0f1623', border: '1px solid #2d3f55', color: '#94a3b8' }}
             >
-              טען עיצוב
+              <span className="sm:hidden">טען</span>
+              <span className="hidden sm:inline">טען עיצוב</span>
             </button>
           )}
 
